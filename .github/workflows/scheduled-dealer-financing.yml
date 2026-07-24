@@ -1,0 +1,56 @@
+name: Scheduler Automation Tests Dealer Financing
+
+on:
+  schedule:
+    # Run daily at 00:00 GMT+7 (17:00 UTC)
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+
+jobs:
+  tests-api:
+    name: "API Tests - Dealer Financing"
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@DF2"
+      workers: "4"
+    secrets: inherit
+
+  report-api:
+    name: "API Report - Dealer Financing"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      keyword: "@DF2"
+      scheduler: true
+    secrets: inherit
+
+  tests-web:
+    name: "Web Tests - Dealer Financing"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@DF2"
+      workers: "4"
+    secrets: inherit
+
+  report-web:
+    name: "Web Report - Dealer Financing"
+    if: ${{ !cancelled() }}
+    needs: [tests-web]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      keyword: "@DF2"
+      scheduler: true
+    secrets: inherit

@@ -1,0 +1,32 @@
+export default [
+  {
+    full_name: 'ATEP ROHIMAT',
+    identity_number: '3204312705760001',
+    gender: 'M',
+    date_of_birth: '1975-05-27',
+    place_of_birth: 'BANDUNG',
+    marital_status: 'S',
+    riskLevel: 'low',
+    pob_mocking: 'JAKARTA',
+  },
+  {
+    full_name: 'TINA SUSILOWATI',
+    identity_number: '9101054409840001',
+    gender: 'F',
+    date_of_birth: '1984-09-04',
+    place_of_birth: 'MERAUKE',
+    marital_status: 'S',
+    riskLevel: 'medium | medium_truck',
+    pob_mocking: 'SEMARANG',
+  },
+  {
+    full_name: 'TINA SUSILOWATI',
+    identity_number: '9101054409840001',
+    gender: 'F',
+    date_of_birth: '1984-09-04',
+    place_of_birth: 'MERAUKE',
+    marital_status: 'S',
+    riskLevel: 'high | high_rejected',
+    pob_mocking: 'SURABAYA',
+  },
+];

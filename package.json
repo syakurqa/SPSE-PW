@@ -1,0 +1,65 @@
+{
+  "name": "automation-monorepo-ekatalog",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "workspaceDependencies": {
+    "@automation/qa-cli": {
+      "@automation/common-module": "*"
+    }
+  },
+  "scripts": {
+    "lint:common-module": "npm run lint --workspace=packages/common-module",
+    "lint:web": "npm run lint --workspace=packages/web-automation",
+    "test:web": "npm run test --workspace=packages/web-automation",
+    "test:web:ui": "npm run test:ui --workspace=packages/web-automation",
+    "test:web:headed": "npm run test:headed --workspace=packages/web-automation",
+    "report:web": "npm run report --workspace=packages/web-automation",
+    "codegen:web": "npm run codegen --workspace=packages/web-automation",
+    "check:env": "node packages/common-module/utils/helpers/env-mapping-checker.js",
+    "check:connection": "npm run check:connection --workspace=packages/common-module",
+    "check:testcase": "node packages/common-module/utils/pipeline-utils/test-case-check/index.js",
+    "check:unique-testcase": "node packages/common-module/utils/pipeline-utils/unique-test-case-check/index.js",
+    "reporting:coverage:sync": "npm run reporting:coverage:sync --workspace=packages/common-module",
+    "reporting:contribution:sync": "npm run reporting:contribution:sync --workspace=packages/common-module",
+    "reporting:execution:write": "npm run reporting:execution:write --workspace=packages/common-module",
+    "reporting:setup": "npm run reporting:setup --workspace=packages/common-module",
+    "reporting:tc:uncategorized": "npm run reporting:tc:uncategorized --workspace=packages/common-module",
+    "reporting:tc:migrate": "npm run reporting:tc:migrate --workspace=packages/common-module",
+    "reporting:jira:sync": "npm run reporting:jira:sync --workspace=packages/common-module",
+    "qa": "node packages/qa-cli/src/index.js",
+    "qa:setup": "node packages/qa-cli/src/index.js setup",
+    "qa:test": "node packages/qa-cli/src/index.js test",
+    "qa:test:web": "node packages/qa-cli/src/index.js test web",
+    "qa:report": "node packages/qa-cli/src/index.js report",
+    "qa:report:web": "node packages/qa-cli/src/index.js report web",
+    "qa:health": "node packages/qa-cli/src/index.js health",
+    "qa:health:all": "node packages/qa-cli/src/index.js health all",
+    "qa:config": "node packages/qa-cli/src/index.js config",
+    "qa:codegen": "node packages/qa-cli/src/index.js codegen",
+    "prepare": "husky"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.23.0",
+    "@stylistic/eslint-plugin-js": "^4.2.0",
+    "eslint": "^9.23.0",
+    "eslint-plugin-check-file": "^3.1.0",
+    "globals": "^16.0.0",
+    "knex": "^3.1.0",
+    "tedious": "^18.6.1"
+  },
+  "allowScripts": {
+    "esbuild@0.27.3": true,
+    "fsevents@2.3.2": true,
+    "fsevents@2.3.3": true,
+    "edgedriver@6.3.0": true,
+    "geckodriver@6.1.0": true
+  }
+}

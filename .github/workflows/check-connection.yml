@@ -1,0 +1,48 @@
+name: Connection Health Check
+run-name: ${{ inputs.test_environment }} - Connection Health Check
+on:
+  workflow_dispatch:
+    inputs:
+      test_environment:
+        description: "Please input environment to test."
+        type: choice
+        required: true
+        default: "SIT"
+        options:
+          - SIT
+          - UAT
+
+jobs:
+  health-check:
+    name: ${{ inputs.test_environment }} - ${{ matrix.runner }} - Connection Health Check
+    environment: ${{ inputs.test_environment }}
+    env:
+      ENV: ${{ inputs.test_environment }}
+    strategy:
+      matrix:
+        runner: [legacy-1, legacy-2, legacy-3, legacy-4, "qa-mac-mini"]
+      fail-fast: false
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up env config from secret
+        run: echo '${{ secrets.PLAYWRIGHT_ENV }}' > packages/common-module/config/env.${{ inputs.test_environment == 'SIT' && 'sit' || 'uat' }}.json
+
+      - name: Set up db config from secret
+        run: echo '${{ secrets.PLAYWRIGHT_DB }}' > packages/common-module/config/db.${{ inputs.test_environment == 'SIT' && 'sit' || 'uat' }}.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Run Connection Check
+        run: |
+          npm run check:connection

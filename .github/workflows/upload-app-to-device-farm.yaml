@@ -1,0 +1,373 @@
+name: Upload Mobile App to Device Farm and LambdaTest
+
+on:
+  workflow_call:
+    inputs:
+      test_environment:
+        description: "Please input environment to test."
+        type: string
+        required: true
+        default: "sit"
+      platform:
+        description: "Please input mobile platform."
+        type: string
+        required: true
+        default: "android"
+      githost_environment:
+        description: "GitHub runner environment (e.g., qa-runner)"
+        type: string
+        required: false
+        default: "qa-runner"
+    outputs:
+      device_farm_app_id:
+        description: "App ID from Device Farm upload"
+        value: ${{ jobs.fetch-and-upload.outputs.device_farm_app_id }}
+      device_farm_app_file_name:
+        description: "Uploaded app file name for Device Farm"
+        value: ${{ jobs.fetch-and-upload.outputs.device_farm_app_file_name }}
+      lambdatest_app_id:
+        description: "App ID from LambdaTest upload"
+        value: ${{ jobs.fetch-and-upload.outputs.lambdatest_app_id }}
+  workflow_dispatch:
+    inputs:
+      githost_environment:
+        description: "GitHub runner environment (e.g., qa-runner)"
+        type: string
+        required: false
+        default: "qa-runner"
+      test_environment:
+        description: "Please input environment to test."
+        type: choice
+        required: true
+        default: "sit"
+        options:
+          - sit
+          - uat
+      platform:
+        description: "Please input mobile platform."
+        type: choice
+        required: true
+        default: "android"
+        options:
+          - android
+          - ios
+
+jobs:
+  fetch-and-upload:
+    runs-on: ${{ inputs.githost_environment }}
+    environment: ${{ inputs.test_environment }}
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      device_farm_app_id: ${{ steps.upload-device-farm.outputs.app_id }}
+      device_farm_app_file_name: ${{ steps.upload-device-farm.outputs.upload_file_name }}
+      lambdatest_app_id: ${{ steps.upload-lambdatest.outputs.app_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: 'true'
+          workload_identity_provider: "${{ secrets.BFI_BRAVONONPROD_WIF_PROVIDER }}"
+          service_account: "qa-automation@bravo-project-nonprod.iam.gserviceaccount.com"
+          token_format: 'access_token'
+          access_token_lifetime: '1200s'
+
+      - name: Parse mobile config from secret
+        id: parse-config
+        env:
+          MOBILE_ENV: ${{ secrets.MOBILE_ENV }}
+          PLATFORM: ${{ inputs.platform }}
+        run: |
+          echo "🔧 Parsing MOBILE_ENV secret..."
+          
+          if [ -z "${MOBILE_ENV}" ]; then
+            echo "❌ MOBILE_ENV secret is not set or empty"
+            exit 1
+          fi
+          
+          # Strip hidden characters (BOM, null bytes) and trim whitespace
+          MOBILE_ENV=$(echo "${MOBILE_ENV}" | tr -d '\000' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          
+          # Parse all values in a single Python invocation and write to GITHUB_OUTPUT
+          echo "${MOBILE_ENV}" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          plat = '${PLATFORM}'.upper()
+          def out(key, val):
+              print(f'{key}={val}')
+          out('firebase_project_id', data['FIREBASE']['PROJECT_ID'])
+          out('firebase_app_id', data['FIREBASE'][f'{plat}_APP_ID'])
+          out('device_farm_base_url', data['DEVICE_FARM']['BASE_URL'])
+          out('device_farm_port', data['DEVICE_FARM']['PORT'])
+          out('device_farm_username', data['DEVICE_FARM']['USERNAME'])
+          out('device_farm_password', data['DEVICE_FARM']['PASSWORD'])
+          out('lambdatest_username', data['LAMBDATEST']['USERNAME'])
+          out('lambdatest_key', data['LAMBDATEST']['KEY'])
+          " >> $GITHUB_OUTPUT
+          
+          echo "✅ Config parsed successfully"
+      
+      - name: Get latest release from Firebase App Distribution
+        id: firebase-release
+        env:
+          FIREBASE_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PROJECT_ID: ${{ steps.parse-config.outputs.firebase_project_id }}
+          APP_ID: ${{ steps.parse-config.outputs.firebase_app_id }}
+        run: |
+          echo "🔍 Fetching latest release from Firebase App Distribution..."
+          echo "🎯 Selected Firebase App ID: ${APP_ID}"
+          
+          API_URL="https://firebaseappdistribution.googleapis.com/v1/projects/${PROJECT_ID}/apps/${APP_ID}/releases"
+          
+          RESPONSE=$(curl -s -X GET "${API_URL}" \
+            -H "Authorization: Bearer ${FIREBASE_ACCESS_TOKEN}" \
+            -H "Accept: application/json")
+          
+          # Extract the latest release whose release notes contain "Automation: true"
+          echo "${RESPONSE}" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          releases = data.get('releases', [])
+          if not releases:
+              print('❌ No releases found in Firebase API response')
+              sys.exit(1)
+          selected = None
+          for release in releases:
+              notes = release.get('releaseNotes') or {}
+              notes_text = notes.get('text', '') if isinstance(notes, dict) else str(notes)
+              if 'Automation: true' in notes_text:
+                  selected = release
+                  break
+          if not selected:
+              print('❌ No release found with release notes containing \"Automation: true\"')
+              print('   Set release notes containing \"Automation: true\" on the target Firebase release.')
+              sys.exit(1)
+          download_url = selected.get('binaryDownloadUri') or selected.get('binaryDownload', {}).get('signedUrl', '')
+          if not download_url:
+              print('❌ No downloadable binary found in the selected release')
+              sys.exit(1)
+          build_version = selected.get('buildVersion', 'unknown')
+          release_id = selected.get('name', 'unknown')
+          notes_text = notes.get('text', '') if isinstance(notes, dict) else str(notes)
+          print(f'download_url={download_url}')
+          print(f'build_version={build_version}')
+          print(f'release_id={release_id}')
+          print(f'notes_text={notes_text}')
+          " >> $GITHUB_OUTPUT
+          
+          echo "✅ Latest release found (notes contain 'Automation: true'):"
+          echo "   Release ID: ${{ steps.firebase-release.outputs.release_id }}"
+          echo "   Build Version: ${{ steps.firebase-release.outputs.build_version }}"
+
+      - name: Download app binary from Firebase
+        id: download-app
+        env:
+          DOWNLOAD_URL: ${{ steps.firebase-release.outputs.download_url }}
+          BUILD_VERSION: ${{ steps.firebase-release.outputs.build_version }}
+          NOTES_TEXT: ${{ steps.firebase-release.outputs.notes_text }}
+          TEST_ENV: ${{ inputs.test_environment }}
+          PLATFORM: ${{ inputs.platform }}
+        run: |
+          echo "📥 Downloading app binary..."
+          echo "   URL: ${DOWNLOAD_URL}"
+          
+          # Determine file extension from platform input
+          if [[ "${PLATFORM}" == "ios" ]]; then
+            EXT=".ipa"
+          else
+            EXT=".apk"
+          fi
+          
+          # Sanitize release notes text for use as file name (remove slashes/spaces, trim)
+          SAFE_NOTES=$(echo "${NOTES_TEXT}" | tr -d '\r\n' | sed -e 's/[[:space:]]/_/g' -e 's/[^A-Za-z0-9._-]//g')
+          if [ -z "$SAFE_NOTES" ]; then
+            SAFE_NOTES="bfi-mobile-${BUILD_VERSION}"
+          fi
+          # Add environment prefix to filename
+          FILE_NAME="${TEST_ENV}_${SAFE_NOTES}${EXT}"
+          
+          # Download the file
+          curl -s -L -o "${FILE_NAME}" "${DOWNLOAD_URL}"
+          
+          if [ ! -f "${FILE_NAME}" ]; then
+            echo "❌ Failed to download app binary"
+            exit 1
+          fi
+          
+          FILE_SIZE=$(stat -c%s "${FILE_NAME}" 2>/dev/null || stat -f%z "${FILE_NAME}")
+          echo "✅ Download complete: ${FILE_NAME} (${FILE_SIZE} bytes)"
+          
+          # Save outputs
+          echo "file_name=${FILE_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Login to Device Farm and get access token
+        id: device-farm-auth
+        env:
+          DEVICE_FARM_BASE_URL: ${{ steps.parse-config.outputs.device_farm_base_url }}
+          DEVICE_FARM_PORT: ${{ steps.parse-config.outputs.device_farm_port }}
+          DEVICE_FARM_USERNAME: ${{ steps.parse-config.outputs.device_farm_username }}
+          DEVICE_FARM_PASSWORD: ${{ steps.parse-config.outputs.device_farm_password }}
+        run: |
+          echo "🔐 Logging in to Device Farm..."
+          
+          DEVICE_FARM_LOGIN_URL="http://${DEVICE_FARM_BASE_URL}:${DEVICE_FARM_PORT}/device-farm/api/auth/login"
+          
+          echo "   Device Farm URL: ${DEVICE_FARM_LOGIN_URL}"
+          echo "   Username: ${DEVICE_FARM_USERNAME}"
+          
+          RESPONSE=$(curl -s -X POST "${DEVICE_FARM_LOGIN_URL}" \
+            -H "Accept: */*" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\": \"${DEVICE_FARM_USERNAME}\", \"password\": \"${DEVICE_FARM_PASSWORD}\"}")
+          
+          TOKEN=$(echo "${RESPONSE}" | python3 -c "import sys, json; d = json.load(sys.stdin); print(d.get('token') or d.get('access_token') or d.get('accessToken', ''))")
+          
+          if [ -z "$TOKEN" ]; then
+            echo "❌ Failed to get Device Farm access token"
+            exit 1
+          fi
+          
+          echo "✅ Device Farm access token obtained"
+          echo "token=${TOKEN}" >> $GITHUB_OUTPUT
+
+      - name: Upload app to Device Farm
+        id: upload-device-farm
+        env:
+          DEVICE_FARM_BASE_URL: ${{ steps.parse-config.outputs.device_farm_base_url }}
+          DEVICE_FARM_PORT: ${{ steps.parse-config.outputs.device_farm_port }}
+          DEVICE_FARM_TOKEN: ${{ steps.device-farm-auth.outputs.token }}
+          APP_FILE: ${{ steps.download-app.outputs.file_name }}
+        run: |
+          echo "📤 Uploading app to Device Farm..."
+          echo "   File: ${APP_FILE}"
+          
+          DEVICE_FARM_UPLOAD_URL="http://${DEVICE_FARM_BASE_URL}:${DEVICE_FARM_PORT}/device-farm/api/dashboard/upload"
+          DEVICE_FARM_APP_INFO_URL="http://${DEVICE_FARM_BASE_URL}:${DEVICE_FARM_PORT}/device-farm/api/dashboard/uploadedAppInformation"
+          DEVICE_FARM_APPS_LIST_URL="http://${DEVICE_FARM_BASE_URL}:${DEVICE_FARM_PORT}/device-farm/api/dashboard/uploadedApps"
+          
+          # Step 1: Upload the file
+          UPLOAD_RESPONSE=$(curl -s -X POST "${DEVICE_FARM_UPLOAD_URL}" \
+            -H "Content-Type: multipart/form-data" \
+            -F "file=@${APP_FILE}")
+          
+          # Extract success flag, file object, and filename in a single Python invocation
+          eval "$(echo "${UPLOAD_RESPONSE}" | python3 -c "
+          import sys, json, shlex
+          data = json.load(sys.stdin)
+          success = str(data.get('success', False)).lower()
+          file_obj = data.get('file', {})
+          file_name = file_obj.get('filename', '') if isinstance(file_obj, dict) else ''
+          file_json = json.dumps(file_obj)
+          print(f'UPLOAD_SUCCESS={shlex.quote(success)}')
+          print(f'UPLOAD_FILE_OBJECT={shlex.quote(file_json)}')
+          print(f'UPLOAD_FILE_NAME={shlex.quote(file_name)}')
+          ")"
+          
+          if [ "$UPLOAD_SUCCESS" != "true" ]; then
+            echo "❌ Device Farm file upload failed"
+            exit 1
+          fi
+          
+          echo "✅ File uploaded successfully"
+          
+          # Step 2: Submit app information
+          # The /uploadedAppInformation endpoint expects file as the FULL OBJECT (with .originalname),
+          # not a string filename. Passing just the filename causes:
+          #   TypeError: Cannot read properties of undefined (reading 'endsWith')
+          APP_INFO_RESPONSE=$(curl -s -X POST "${DEVICE_FARM_APP_INFO_URL}" \
+            -H "Accept: */*" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${DEVICE_FARM_TOKEN}" \
+            -d "{\"file\": ${UPLOAD_FILE_OBJECT}, \"bundleId\": \"\"}")
+
+          # Step 3: Get the list of apps
+          APPS_LIST=$(curl -s -X GET "${DEVICE_FARM_APPS_LIST_URL}" \
+            -H "Accept: */*" \
+            -H "Authorization: Bearer ${DEVICE_FARM_TOKEN}")
+
+          # Match by original fileName, extract server-assigned uploadedFileName and id
+          eval "$(echo "${APPS_LIST}" | python3 -c "
+          import sys, json, shlex
+          data = json.load(sys.stdin)
+          target = '${APP_FILE}'
+          for app in data:
+              if app.get('fileName', '') == target:
+                  print(f'APP_ID={shlex.quote(str(app.get(\"id\", \"\")))}')
+                  print(f'UPLOADED_FILE_NAME={shlex.quote(str(app.get(\"uploadedFileName\", \"\")))}')
+                  break
+          ")"
+
+          if [ -z "$APP_ID" ]; then
+            echo "❌ No app found in Device Farm matching fileName '${APP_FILE}'"
+            exit 1
+          fi
+
+          echo "✅ Device Farm upload complete"
+          echo "   App ID: ${APP_ID}"
+          echo "   uploadedFileName: ${UPLOADED_FILE_NAME}"
+          echo "app_id=${APP_ID}" >> $GITHUB_OUTPUT
+          echo "upload_file_name=${UPLOADED_FILE_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Upload app to LambdaTest
+        id: upload-lambdatest
+        env:
+          LAMBDATEST_USERNAME: ${{ steps.parse-config.outputs.lambdatest_username }}
+          LAMBDATEST_KEY: ${{ steps.parse-config.outputs.lambdatest_key }}
+          APP_FILE: ${{ steps.download-app.outputs.file_name }}
+          PLATFORM: ${{ inputs.platform }}
+          TEST_ENV: ${{ inputs.test_environment }}
+        run: |
+          echo "📤 Uploading app to LambdaTest..."
+          echo "   File: ${APP_FILE}"
+          
+          LAMBDATEST_UPLOAD_URL="https://manual-api.lambdatest.com/app/upload/realDevice"
+          
+          # Generate custom ID based on environment and platform
+          CUSTOM_ID="bfi-${PLATFORM}-${TEST_ENV}"
+          echo "   Custom ID: ${CUSTOM_ID}"
+          
+          # Check if file exists
+          if [ ! -f "${APP_FILE}" ]; then
+            echo "❌ App file not found: ${APP_FILE}"
+            exit 1
+          fi
+          
+          # Base64 encode credentials for Basic Auth (remove newlines)
+          AUTH=$(echo -n "${LAMBDATEST_USERNAME}:${LAMBDATEST_KEY}" | base64 | tr -d '\n')
+          
+          # Upload the app using LambdaTest API
+          # Using --http1.1 because HTTP/2 fails with large multipart uploads
+          RESPONSE=$(curl -s --http1.1 --max-time 900 --connect-timeout 60 \
+            -X POST "${LAMBDATEST_UPLOAD_URL}" \
+            --header "Authorization: Basic ${AUTH}" \
+            --form "appFile=@${APP_FILE}" \
+            --form "name=${APP_FILE}" \
+            --form "custom_id=${CUSTOM_ID}" \
+            --form "visibility=team")
+          
+          # Extract app_id from response
+          APP_ID=$(echo "${RESPONSE}" | python3 -c "import sys, json; d = json.load(sys.stdin); print(d.get('app_id') or d.get('id') or d.get('custom_id', ''))")
+          
+          if [ -z "$APP_ID" ]; then
+            echo "❌ LambdaTest upload failed - no app_id returned"
+            exit 1
+          fi
+          
+          echo "✅ LambdaTest upload complete"
+          echo "   App ID: ${APP_ID}"
+          echo "app_id=${APP_ID}" >> $GITHUB_OUTPUT
+
+      - name: Summary
+        run: |
+          echo "📋 Upload Summary:"
+          echo "   Firebase Release: ${{ steps.firebase-release.outputs.release_id }}"
+          echo "   Build Version: ${{ steps.firebase-release.outputs.build_version }}"
+          echo "   Downloaded File: ${{ steps.download-app.outputs.file_name }}"
+          echo "   Device Farm App ID: ${{ steps.upload-device-farm.outputs.app_id }}"
+          echo "   Device Farm uploadedFileName: ${{ steps.upload-device-farm.outputs.upload_file_name }}"
+          echo "   LambdaTest App ID: ${{ steps.upload-lambdatest.outputs.app_id }}"

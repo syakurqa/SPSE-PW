@@ -1,0 +1,56 @@
+name: Scheduler Automation Tests Payment
+
+on:
+  schedule:
+    # Run daily at 08:30 GMT+7 (01:30 UTC)
+    - cron: "30 1 * * *"
+  workflow_dispatch:
+
+jobs:
+  tests-api:
+    name: "API Tests - Payment"
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@BLP"
+      workers: "16"
+    secrets: inherit
+
+  report-api:
+    name: "API Report - Payment"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      keyword: "@BLP"
+      scheduler: true
+    secrets: inherit
+
+  tests-web:
+    name: "Web Tests - Payment"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@BLP"
+      workers: "16"
+    secrets: inherit
+
+  report-web:
+    name: "Web Report - Payment"
+    if: ${{ !cancelled() }}
+    needs: [tests-web]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      keyword: "@BLP"
+      scheduler: true
+    secrets: inherit

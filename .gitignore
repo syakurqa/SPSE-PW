@@ -1,0 +1,18 @@
+node_modules/
+dist/
+/test-results*
+.DS_Store
+mcp.json
+/.github/skills
+/docs
+.vscode/changelists.json
+.playwright-cli
+.claude
+docs
+CLAUDE.md
+.DS_Store
+.env
+.qa-last-run.json
+.agents/
+# Cloned MCP servers for AI agent setup
+.github/agents/mcp-servers/

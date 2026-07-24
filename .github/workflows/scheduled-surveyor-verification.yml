@@ -1,0 +1,56 @@
+name: Scheduler Automation Tests Surveyor & Verification
+
+on:
+  schedule:
+    # Run daily at 00:00 GMT+7 (17:00 UTC)
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+
+jobs:
+  tests-api:
+    name: "API Tests - Surveyor & Verification"
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@LN"
+      workers: "16"
+    secrets: inherit
+
+  report-api:
+    name: "API Report - Surveyor & Verification"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      keyword: "@LN"
+      scheduler: true
+    secrets: inherit
+
+  tests-web:
+    name: "Web Tests - Surveyor & Verification"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@LN"
+      workers: "16"
+    secrets: inherit
+
+  report-web:
+    name: "Web Report - Surveyor & Verification"
+    if: ${{ !cancelled() }}
+    needs: [tests-web]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      keyword: "@LN"
+      scheduler: true
+    secrets: inherit

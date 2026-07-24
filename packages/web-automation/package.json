@@ -1,0 +1,29 @@
+{
+  "name": "@automation/web",
+  "type": "module",
+  "version": "1.0.0",
+  "license": "ISC",
+  "dependencies": {
+    "@automation/common-module": "1.0.0",
+    "@faker-js/faker": "^9.6.0",
+    "@jsforce/jsforce-node": "^3.7.0",
+    "@playwright/test": "^1.60",
+    "@types/node": "^22.13.14",
+    "moment-timezone": "^0.5.48",
+    "papaparse": "^5.5.3"
+  },
+  "devDependencies": {
+    "eslint-plugin-playwright": "^2.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0"
+  },
+  "scripts": {
+    "lint": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" eslint . --fix",
+    "test": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test",
+    "test:headed": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test --headed",
+    "test:ui": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test --ui",
+    "codegen": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright codegen",
+    "report": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright show-report",
+    "zephyr:test-cycle:playwright": "npm run zephyr:test-cycle:playwright --workspace=@automation/common-module"
+  }
+}

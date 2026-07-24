@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -euo pipefail
+
+# $3 is 1 for branch checkout or 0 for file checkout
+if [ "${3:-}" = "0" ]; then
+  exit 0
+fi
+
+./.husky/run-npm-install-if-needed.sh

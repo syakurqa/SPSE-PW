@@ -1,0 +1,125 @@
+name: Run Test
+
+on:
+  workflow_call:
+    inputs:
+      workspace_type:
+        description: "Please input workspace"
+        type: string
+        required: true
+      test_environment:
+        description: SIT or UAT
+        type: string
+        required: true
+      githost_environment:
+        description: ubuntu-22-4core or qa-runner
+        type: string
+        required: true
+      keyword:
+        description: "Please input keyword"
+        type: string
+        required: true
+      test_path:
+        description: "File or folder path to scope test run (e.g. 'backoffice-platform/ssf' or 'ssf/tests/e2epersonal.spec.js')"
+        type: string
+        required: false
+        default: ""
+      workers:
+        description: "Number of parallel workers for test execution"
+        type: string
+        required: true
+      branch_name:
+        description: "Branch to checkout. If empty, use the current workflow branch."
+        type: string
+        required: false
+        default: ""
+
+jobs:
+  run-tests:
+    if: ${{ !cancelled() }}
+    name: Run Test with keyword ${{ inputs.keyword }}
+    environment: ${{ inputs.test_environment }}
+    env:
+      ENV: ${{ inputs.test_environment }}
+      WORKSPACE_DIR: packages/${{ inputs.workspace_type }}-automation
+      CI: true
+    runs-on: ${{ inputs.githost_environment }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_name != '' && inputs.branch_name || github.ref_name }}
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set runner timezone to GMT+7
+        uses: szenius/set-timezone@v1.2
+        with:
+          timezoneLinux: "Asia/Jakarta"
+
+      - name: Set up env config from secret
+        run: echo '${{ secrets.PLAYWRIGHT_ENV }}' > packages/common-module/config/env.${{ inputs.test_environment == 'SIT' && 'sit' || 'uat' }}.json
+
+      - name: Set up db config from secret
+        run: echo '${{ secrets.PLAYWRIGHT_DB }}' > packages/common-module/config/db.${{ inputs.test_environment == 'SIT' && 'sit' || 'uat' }}.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # - name: Install Playwright Browsers
+      #   if: ${{ !contains(inputs.githost_environment, 'qa-runner') }}
+      #   run: npx playwright install chromium
+
+      - name: Download the failed tests if they are present
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-playwright-failed-tests-${{ inputs.workspace_type }}-${{ github.run_attempt }}-${{ github.run_id }}
+          path: ${{ env.WORKSPACE_DIR }}/test-results
+        continue-on-error: true
+
+      - name: Run Test
+        working-directory: ${{ env.WORKSPACE_DIR }}
+        run: |
+          set -euo pipefail
+
+          FAILED_TESTS_FLAG=""
+          if [[ -f "test-results/.last-run.json" && "${{ github.run_attempt }}" -gt 1 ]]; then
+            echo "Detected failed tests from previous attempt. Running only failed specs."
+            FAILED_TESTS_FLAG="--last-failed --pass-with-no-tests"
+          fi
+
+          # Determine workers flag based on githost_environment
+          WORKERS_FLAG="--workers=3"
+          if [[ "${{ inputs.githost_environment }}" == *qa-runner* ]]; then
+            echo "qa-runner runner detected"
+            WORKERS_FLAG="--workers=${{ inputs.workers }}"
+          fi
+
+          TEST_PATH="${{ inputs.test_path }}"
+          echo "Running command: npx playwright test ${TEST_PATH} --grep=\"${{ inputs.keyword }}\" ${WORKERS_FLAG} ${FAILED_TESTS_FLAG}"
+          npx playwright test ${TEST_PATH} --grep="${{ inputs.keyword }}" ${WORKERS_FLAG} ${FAILED_TESTS_FLAG}
+
+      - name: Upload blob report to GitHub Actions Artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ inputs.workspace_type }}-${{ github.run_attempt }}-${{ github.run_id }}
+          path: ${{ env.WORKSPACE_DIR }}/blob-report
+          retention-days: 1
+          
+      - name: Artifacts Playwright failed tests
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-playwright-failed-tests-${{ inputs.workspace_type }}-${{ github.run_attempt }}-${{ github.run_id }}
+          retention-days: 30
+          path: ${{ env.WORKSPACE_DIR }}/test-results/.last-run.json
+          if-no-files-found: ignore
+          include-hidden-files: true
+          overwrite: true

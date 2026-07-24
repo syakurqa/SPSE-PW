@@ -1,0 +1,58 @@
+name: Scheduler Automation Tests Direct Marketing - SSF
+
+on:
+  schedule:
+    # Run daily at 00:00 GMT+7 (17:00 UTC)
+    - cron: "0 17 * * 1,3,5"
+  workflow_dispatch:
+
+jobs:
+  tests-api:
+    name: "API Tests - Direct Marketing SSF"
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@DMTM"
+      test_path: "tests/backoffice/ssf tests/lora-gateway/ssf"
+      workers: "4"
+    secrets: inherit
+
+  report-api:
+    name: "API Report - Direct Marketing SSF"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      keyword: "@DMTM"
+      scheduler: true
+    secrets: inherit
+
+  tests-web:
+    name: "Web Tests - Direct Marketing SSF"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@DMTM"
+      test_path: "backoffice-platform/ssf lora/tests/ssf"
+      workers: "4"
+    secrets: inherit
+
+  report-web:
+    name: "Web Report - Direct Marketing SSF"
+    if: ${{ !cancelled() }}
+    needs: [tests-web]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      keyword: "@DMTM"
+      scheduler: true
+    secrets: inherit

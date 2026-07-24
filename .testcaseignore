@@ -1,0 +1,23 @@
+# Test Case Ignore Patterns
+# Files matching these patterns will be excluded from test case scanning
+# Uses simple string matching - if file path contains the pattern, it's ignored
+
+# Ignore ESLint plugin with example test case IDs
+eslint-plugin-test-tagging-rules.js
+
+# Ignore scanner utilities that contain example IDs
+test-case-scanner.js
+test-case-validator.js
+
+# Ignore health check index files
+pipeline-utils/test-case-check/index.js
+pipeline-utils/unique-test-case-check/index.js
+
+# Common ignores (already handled by scanner, but listed for clarity)
+node_modules/
+.git/
+
+# Ignore example/template files
+.example.js
+.template.js
+.sample.js

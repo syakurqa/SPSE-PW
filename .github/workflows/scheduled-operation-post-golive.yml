@@ -1,0 +1,56 @@
+name: Scheduler Automation Tests Operation Post-Golive
+
+on:
+  schedule:
+    # Run daily at 00:00 GMT+7 (17:00 UTC)
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+
+jobs:
+  tests-api:
+    name: "API Tests - Operation Post-Golive"
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@DMS"
+      workers: "16"
+    secrets: inherit
+
+  report-api:
+    name: "API Report - Operation Post-Golive"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: api
+      test_environment: SIT
+      keyword: "@DMS"
+      scheduler: true
+    secrets: inherit
+
+  tests-web:
+    name: "Web Tests - Operation Post-Golive"
+    if: ${{ !cancelled() }}
+    needs: [tests-api]
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      githost_environment: qa-runner
+      keyword: "@DMS"
+      workers: "16"
+    secrets: inherit
+
+  report-web:
+    name: "Web Report - Operation Post-Golive"
+    if: ${{ !cancelled() }}
+    needs: [tests-web]
+    uses: ./.github/workflows/report.yml
+    with:
+      workspace_type: web
+      test_environment: SIT
+      keyword: "@DMS"
+      scheduler: true
+    secrets: inherit

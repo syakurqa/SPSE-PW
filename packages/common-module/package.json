@@ -1,0 +1,39 @@
+{
+  "name": "@automation/common-module",
+  "type": "module",
+  "version": "1.0.0",
+  "license": "ISC",
+  "scripts": {
+    "lint": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" eslint . --fix",
+    "zephyr:test-cycle:playwright": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" node utils/pipeline-utils/reports/create-test-cycle.js",
+    "zephyr:regression:aggregate": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" node utils/pipeline-utils/reports/aggregate-regression.js",
+    "test:regression-aggregator": "node --test utils/pipeline-utils/reports/regression-aggregator.test.js",
+    "check:connection": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" node utils/pipeline-utils/connection-check/index.js",
+    "reporting:coverage:sync": "node utils/pipeline-utils/reporting-sync/coverage-sync.js",
+    "reporting:contribution:sync": "node utils/pipeline-utils/reporting-sync/member-contribution-sync.js",
+    "reporting:execution:write": "node utils/pipeline-utils/reporting-sync/execution-writer.js",
+    "reporting:jira:sync": "node utils/pipeline-utils/reporting-sync/jira-issue-sync.js",
+    "reporting:setup": "node utils/pipeline-utils/reporting-admin/setup.js",
+    "reporting:tc:uncategorized": "node utils/pipeline-utils/reporting-tc/uncategorized.js",
+    "reporting:tc:migrate": "node utils/pipeline-utils/reporting-tc/migrate.js"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^9.6.0",
+    "arangojs": "^10.1.2",
+    "@inquirer/prompts": "^7.5.0",
+    "args": "^5.0.3",
+    "axios": "^1.8.4",
+    "dotenv": "^17.4.2",
+    "glob": "^11.0.1",
+    "xlsx": "^0.20.2",
+    "knex": "^3.1.0",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.5.47",
+    "pg": "^8.13.3",
+    "tedious": "^18.6.1"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0"
+  }
+}
