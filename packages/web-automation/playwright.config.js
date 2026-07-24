@@ -19,7 +19,7 @@ const baseReportDir = process.env.CI == 'true' ? './playwright-report/' : `./pla
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testMatch: ['**/ekatalog/tests/**/*.spec.js'],
+  testMatch: ['**/(ekatalog|spse)/tests/**/*.spec.js'],
   timeout: 120000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -55,7 +55,11 @@ export default defineConfig({
   projects: [
     {
       name: 'ekatalog',
-      testMatch: /.*\.spec\.js/
+      testMatch: /ekatalog\/tests\/.*\.spec\.js/
+    },
+    {
+      name: 'spse',
+      testMatch: /spse\/tests\/.*\.spec\.js/
     },
   ],
 });
