@@ -1,0 +1,72 @@
+{"step":1,"flow":"flow3","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai anggota Pokja","expected":"Halaman autentikasi ditampilkan.","image":"flow3/01-klik-login-untuk-masuk-sebagai-anggota-pokja.png"}
+{"step":2,"flow":"flow3","action":"Isi","instruction":"Isi Alamat email anggota Pokja","expected":"Email siap diproses.","image":"flow3/02-isi-alamat-email-anggota-pokja.png"}
+{"step":3,"flow":"flow3","action":"Isi","instruction":"Isi Sandi anggota Pokja","expected":"Sandi tersimpan secara tersensor.","image":"flow3/03-isi-sandi-anggota-pokja.png"}
+{"step":4,"flow":"flow3","action":"Klik","instruction":"Klik Lanjutkan tanpa Security Key","expected":"Proses login Pokja berlanjut.","image":"flow3/04-klik-lanjutkan-tanpa-security-key.png"}
+{"step":5,"flow":"flow3","action":"Pilih","instruction":"Pilih role Anggota Pokja Pemilihan Kota Cirebon","expected":"Dashboard Pokja terbuka.","image":"flow3/05-pilih-role-anggota-pokja-pemilihan-kota-cirebon.png"}
+{"step":6,"flow":"flow3","action":"Klik","instruction":"Klik DAFTAR PAKET pada dashboard Pokja","expected":"Daftar paket Pokja ditampilkan.","image":"flow3/06-klik-daftar-paket-pada-dashboard-pokja.png"}
+{"step":7,"flow":"flow3","action":"Klik","instruction":"Klik tab Non Tender","expected":"Paket Penunjukan Langsung ditampilkan.","image":"flow3/07-klik-tab-non-tender.png"}
+{"step":8,"flow":"flow3","action":"Klik","instruction":"Klik Buat Non Tender pada paket yang ditugaskan","expected":"Halaman konfigurasi paket terbuka.","image":"flow3/08-klik-buat-non-tender-pada-paket-yang-ditugaskan.png"}
+{"step":9,"flow":"flow3","action":"Klik","instruction":"Klik Jadwal Paket","expected":"Form sembilan tahap jadwal terbuka.","image":"flow3/09-klik-jadwal-paket.png"}
+{"step":10,"flow":"flow3","action":"Klik","instruction":"Klik Simpan setelah jadwal H+1 sampai H+9 diisi","expected":"Semua Jadwal berhasil tersimpan.","image":"flow3/10-klik-simpan-setelah-jadwal-h-1-sampai-h-9-diisi.png"}
+{"step":11,"flow":"flow3","action":"Klik","instruction":"Klik Persyaratan Kualifikasi","expected":"Form klasifikasi dan persyaratan terbuka.","image":"flow3/11-klik-persyaratan-kualifikasi.png"}
+{"step":1,"flow":"flow3","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai anggota Pokja","expected":"Halaman autentikasi ditampilkan.","image":"flow3/01-klik-login-untuk-masuk-sebagai-anggota-pokja.png"}
+{"step":2,"flow":"flow3","action":"Isi","instruction":"Isi Alamat email anggota Pokja","expected":"Email siap diproses.","image":"flow3/02-isi-alamat-email-anggota-pokja.png"}
+{"step":3,"flow":"flow3","action":"Isi","instruction":"Isi Sandi anggota Pokja","expected":"Sandi tersimpan secara tersensor.","image":"flow3/03-isi-sandi-anggota-pokja.png"}
+{"step":4,"flow":"flow3","action":"Klik","instruction":"Klik Lanjutkan tanpa Security Key","expected":"Proses login Pokja berlanjut.","image":"flow3/04-klik-lanjutkan-tanpa-security-key.png"}
+{"step":5,"flow":"flow3","action":"Pilih","instruction":"Pilih role Anggota Pokja Pemilihan Kota Cirebon","expected":"Dashboard Pokja terbuka.","image":"flow3/05-pilih-role-anggota-pokja-pemilihan-kota-cirebon.png"}
+{"step":6,"flow":"flow3","action":"Klik","instruction":"Klik DAFTAR PAKET pada dashboard Pokja","expected":"Daftar paket Pokja ditampilkan.","image":"flow3/06-klik-daftar-paket-pada-dashboard-pokja.png"}
+{"step":7,"flow":"flow3","action":"Klik","instruction":"Klik tab Non Tender","expected":"Paket Penunjukan Langsung ditampilkan.","image":"flow3/07-klik-tab-non-tender.png"}
+{"step":8,"flow":"flow3","action":"Klik","instruction":"Klik Buat Non Tender pada paket yang ditugaskan","expected":"Halaman konfigurasi paket terbuka.","image":"flow3/08-klik-buat-non-tender-pada-paket-yang-ditugaskan.png"}
+{"step":9,"flow":"flow3","action":"Klik","instruction":"Klik Jadwal Paket","expected":"Form sembilan tahap jadwal terbuka.","image":"flow3/09-klik-jadwal-paket.png"}
+{"step":10,"flow":"flow3","action":"Klik","instruction":"Klik Simpan setelah jadwal H+1 sampai H+9 diisi","expected":"Semua Jadwal berhasil tersimpan.","image":"flow3/10-klik-simpan-setelah-jadwal-h-1-sampai-h-9-diisi.png"}
+{"step":11,"flow":"flow3","action":"Klik","instruction":"Klik Persyaratan Kualifikasi","expected":"Form klasifikasi dan persyaratan terbuka.","image":"flow3/11-klik-persyaratan-kualifikasi.png"}
+{"step":12,"flow":"flow3","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai anggota Pokja","expected":"Halaman autentikasi ditampilkan.","image":"flow3/12-klik-login-untuk-masuk-sebagai-anggota-pokja.png"}
+{"step":13,"flow":"flow3","action":"Isi","instruction":"Isi Alamat email anggota Pokja","expected":"Email siap diproses.","image":"flow3/13-isi-alamat-email-anggota-pokja.png"}
+{"step":14,"flow":"flow3","action":"Isi","instruction":"Isi Sandi anggota Pokja","expected":"Sandi tersimpan secara tersensor.","image":"flow3/14-isi-sandi-anggota-pokja.png"}
+{"step":15,"flow":"flow3","action":"Klik","instruction":"Klik Lanjutkan tanpa Security Key","expected":"Proses login Pokja berlanjut.","image":"flow3/15-klik-lanjutkan-tanpa-security-key.png"}
+{"step":16,"flow":"flow3","action":"Pilih","instruction":"Pilih role Anggota Pokja Pemilihan Kota Cirebon","expected":"Dashboard Pokja terbuka.","image":"flow3/16-pilih-role-anggota-pokja-pemilihan-kota-cirebon.png"}
+{"step":17,"flow":"flow3","action":"Klik","instruction":"Klik DAFTAR PAKET pada dashboard Pokja","expected":"Daftar paket Pokja ditampilkan.","image":"flow3/17-klik-daftar-paket-pada-dashboard-pokja.png"}
+{"step":18,"flow":"flow3","action":"Klik","instruction":"Klik tab Non Tender","expected":"Paket Penunjukan Langsung ditampilkan.","image":"flow3/18-klik-tab-non-tender.png"}
+{"step":19,"flow":"flow3","action":"Klik","instruction":"Klik Buat Non Tender pada paket yang ditugaskan","expected":"Halaman konfigurasi paket terbuka.","image":"flow3/19-klik-buat-non-tender-pada-paket-yang-ditugaskan.png"}
+{"step":20,"flow":"flow3","action":"Klik","instruction":"Klik Jadwal Paket","expected":"Form sembilan tahap jadwal terbuka.","image":"flow3/20-klik-jadwal-paket.png"}
+{"step":21,"flow":"flow3","action":"Klik","instruction":"Klik Simpan setelah jadwal H+1 sampai H+9 diisi","expected":"Semua Jadwal berhasil tersimpan.","image":"flow3/21-klik-simpan-setelah-jadwal-h-1-sampai-h-9-diisi.png"}
+{"step":22,"flow":"flow3","action":"Klik","instruction":"Klik Persyaratan Kualifikasi","expected":"Form klasifikasi dan persyaratan terbuka.","image":"flow3/22-klik-persyaratan-kualifikasi.png"}
+{"step":23,"flow":"flow3","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai anggota Pokja","expected":"Halaman autentikasi ditampilkan.","image":"flow3/23-klik-login-untuk-masuk-sebagai-anggota-pokja.png"}
+{"step":24,"flow":"flow3","action":"Isi","instruction":"Isi Alamat email anggota Pokja","expected":"Email siap diproses.","image":"flow3/24-isi-alamat-email-anggota-pokja.png"}
+{"step":25,"flow":"flow3","action":"Isi","instruction":"Isi Sandi anggota Pokja","expected":"Sandi tersimpan secara tersensor.","image":"flow3/25-isi-sandi-anggota-pokja.png"}
+{"step":26,"flow":"flow3","action":"Klik","instruction":"Klik Lanjutkan tanpa Security Key","expected":"Proses login Pokja berlanjut.","image":"flow3/26-klik-lanjutkan-tanpa-security-key.png"}
+{"step":27,"flow":"flow3","action":"Pilih","instruction":"Pilih role Anggota Pokja Pemilihan Kota Cirebon","expected":"Dashboard Pokja terbuka.","image":"flow3/27-pilih-role-anggota-pokja-pemilihan-kota-cirebon.png"}
+{"step":28,"flow":"flow3","action":"Klik","instruction":"Klik DAFTAR PAKET pada dashboard Pokja","expected":"Daftar paket Pokja ditampilkan.","image":"flow3/28-klik-daftar-paket-pada-dashboard-pokja.png"}
+{"step":29,"flow":"flow3","action":"Klik","instruction":"Klik tab Non Tender","expected":"Paket Penunjukan Langsung ditampilkan.","image":"flow3/29-klik-tab-non-tender.png"}
+{"step":30,"flow":"flow3","action":"Klik","instruction":"Klik Buat Non Tender pada paket yang ditugaskan","expected":"Halaman konfigurasi paket terbuka.","image":"flow3/30-klik-buat-non-tender-pada-paket-yang-ditugaskan.png"}
+{"step":31,"flow":"flow3","action":"Klik","instruction":"Klik Jadwal Paket","expected":"Form sembilan tahap jadwal terbuka.","image":"flow3/31-klik-jadwal-paket.png"}
+{"step":32,"flow":"flow3","action":"Klik","instruction":"Klik Simpan setelah jadwal H+1 sampai H+9 diisi","expected":"Semua Jadwal berhasil tersimpan.","image":"flow3/32-klik-simpan-setelah-jadwal-h-1-sampai-h-9-diisi.png"}
+{"step":33,"flow":"flow3","action":"Klik","instruction":"Klik Persyaratan Kualifikasi","expected":"Form klasifikasi dan persyaratan terbuka.","image":"flow3/33-klik-persyaratan-kualifikasi.png"}
+{"step":34,"flow":"flow3","action":"Klik","instruction":"Klik Masa Berlaku Penawaran","expected":"Field masa berlaku ditampilkan.","image":"flow3/34-klik-masa-berlaku-penawaran.png"}
+{"step":35,"flow":"flow3","action":"Isi","instruction":"Isi masa berlaku penawaran 90 hari","expected":"Masa berlaku tersimpan.","image":"flow3/35-isi-masa-berlaku-penawaran-90-hari.png"}
+{"step":36,"flow":"flow3","action":"Klik","instruction":"Klik Dokumen Penawaran","expected":"Daftar persyaratan dokumen ditampilkan.","image":"flow3/36-klik-dokumen-penawaran.png"}
+{"step":37,"flow":"flow3","action":"Unggah","instruction":"Klik Upload pada Dokumen Pemilihan (SDP)","expected":"Form upload SDP terbuka.","image":"flow3/37-klik-upload-pada-dokumen-pemilihan-sdp.png"}
+{"step":38,"flow":"flow3","action":"Klik","instruction":"Klik Kirim untuk membuat undangan reviu DPP","expected":"Form undangan ditampilkan.","image":"flow3/38-klik-kirim-untuk-membuat-undangan-reviu-dpp.png"}
+{"step":39,"flow":"flow3","action":"Klik","instruction":"Klik Kirim Pesan untuk mengirim undangan","expected":"Undangan reviu DPP berhasil terkirim.","image":"flow3/39-klik-kirim-pesan-untuk-mengirim-undangan.png"}
+{"step":40,"flow":"flow3","action":"Unggah","instruction":"Klik Upload untuk mengunggah BA hasil reviu","expected":"Form upload BA reviu terbuka.","image":"flow3/40-klik-upload-untuk-mengunggah-ba-hasil-reviu.png"}
+{"step":41,"flow":"flow3","action":"Klik","instruction":"Klik Pilih Penyedia","expected":"Halaman pencarian penyedia terbuka.","image":"flow3/41-klik-pilih-penyedia.png"}
+{"step":42,"flow":"flow3","action":"Pilih","instruction":"Centang penyedia ANGSAE","expected":"Penyedia target ditandai.","image":"flow3/42-centang-penyedia-angsae.png"}
+{"step":43,"flow":"flow3","action":"Klik","instruction":"Klik Setuju pada Pakta Integritas","expected":"Persetujuan anggota Pokja tercatat.","image":"flow3/43-klik-setuju-pada-pakta-integritas.png"}
+{"step":44,"flow":"flow3","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai anggota Pokja","expected":"Halaman autentikasi ditampilkan.","image":"flow3/44-klik-login-untuk-masuk-sebagai-anggota-pokja.png"}
+{"step":45,"flow":"flow3","action":"Isi","instruction":"Isi Alamat email anggota Pokja","expected":"Email siap diproses.","image":"flow3/45-isi-alamat-email-anggota-pokja.png"}
+{"step":46,"flow":"flow3","action":"Isi","instruction":"Isi Sandi anggota Pokja","expected":"Sandi tersimpan secara tersensor.","image":"flow3/46-isi-sandi-anggota-pokja.png"}
+{"step":47,"flow":"flow3","action":"Klik","instruction":"Klik Lanjutkan tanpa Security Key","expected":"Proses login Pokja berlanjut.","image":"flow3/47-klik-lanjutkan-tanpa-security-key.png"}
+{"step":48,"flow":"flow3","action":"Pilih","instruction":"Pilih role Anggota Pokja Pemilihan Kota Cirebon","expected":"Dashboard Pokja terbuka.","image":"flow3/48-pilih-role-anggota-pokja-pemilihan-kota-cirebon.png"}
+{"step":49,"flow":"flow3","action":"Klik","instruction":"Klik DAFTAR PAKET pada dashboard Pokja","expected":"Daftar paket Pokja ditampilkan.","image":"flow3/49-klik-daftar-paket-pada-dashboard-pokja.png"}
+{"step":50,"flow":"flow3","action":"Klik","instruction":"Klik tab Non Tender","expected":"Paket Penunjukan Langsung ditampilkan.","image":"flow3/50-klik-tab-non-tender.png"}
+{"step":51,"flow":"flow3","action":"Klik","instruction":"Klik Buat Non Tender pada paket yang ditugaskan","expected":"Halaman konfigurasi paket terbuka.","image":"flow3/51-klik-buat-non-tender-pada-paket-yang-ditugaskan.png"}
+{"step":52,"flow":"flow3","action":"Klik","instruction":"Klik Setuju pada Pakta Integritas","expected":"Persetujuan anggota Pokja tercatat.","image":"flow3/52-klik-setuju-pada-pakta-integritas.png"}
+{"step":53,"flow":"flow3","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai anggota Pokja","expected":"Halaman autentikasi ditampilkan.","image":"flow3/53-klik-login-untuk-masuk-sebagai-anggota-pokja.png"}
+{"step":54,"flow":"flow3","action":"Isi","instruction":"Isi Alamat email anggota Pokja","expected":"Email siap diproses.","image":"flow3/54-isi-alamat-email-anggota-pokja.png"}
+{"step":55,"flow":"flow3","action":"Isi","instruction":"Isi Sandi anggota Pokja","expected":"Sandi tersimpan secara tersensor.","image":"flow3/55-isi-sandi-anggota-pokja.png"}
+{"step":56,"flow":"flow3","action":"Klik","instruction":"Klik Lanjutkan tanpa Security Key","expected":"Proses login Pokja berlanjut.","image":"flow3/56-klik-lanjutkan-tanpa-security-key.png"}
+{"step":57,"flow":"flow3","action":"Pilih","instruction":"Pilih role Anggota Pokja Pemilihan Kota Cirebon","expected":"Dashboard Pokja terbuka.","image":"flow3/57-pilih-role-anggota-pokja-pemilihan-kota-cirebon.png"}
+{"step":58,"flow":"flow3","action":"Klik","instruction":"Klik DAFTAR PAKET pada dashboard Pokja","expected":"Daftar paket Pokja ditampilkan.","image":"flow3/58-klik-daftar-paket-pada-dashboard-pokja.png"}
+{"step":59,"flow":"flow3","action":"Klik","instruction":"Klik tab Non Tender","expected":"Paket Penunjukan Langsung ditampilkan.","image":"flow3/59-klik-tab-non-tender.png"}
+{"step":60,"flow":"flow3","action":"Klik","instruction":"Klik Buat Non Tender pada paket yang ditugaskan","expected":"Halaman konfigurasi paket terbuka.","image":"flow3/60-klik-buat-non-tender-pada-paket-yang-ditugaskan.png"}
+{"step":61,"flow":"flow3","action":"Klik","instruction":"Klik Setuju pada Pakta Integritas","expected":"Persetujuan anggota Pokja tercatat.","image":"flow3/61-klik-setuju-pada-pakta-integritas.png"}

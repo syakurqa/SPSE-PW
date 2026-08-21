@@ -405,20 +405,37 @@ export class PokjaApprovalPage {
         state: 'visible',
         timeout: 15000,
       });
-      await liveSearch.fill('');
-      await liveSearch.pressSequentially('b', { delay: 150 });
-
       // bootstrap-select may append its menu directly to <body>, so the
       // results cannot reliably be scoped below #kbkiModal/.bootstrap-select.
       const descriptionOption = this.page.locator(
         '.dropdown-menu.show li:not(.disabled):not(.hidden) a[role="option"], '
         + '.dropdown-menu.show li:not(.disabled):not(.hidden) a, '
         + '.dropdown-menu.show .dropdown-item:not(.disabled)'
-      ).filter({ hasNotText: /Pilih Deskripsi|No results|Tidak ada hasil|Mencari|Searching/i, }).first();
-      const visibleOptionFound = await descriptionOption.waitFor({
-        state: 'visible',
-        timeout: 30000,
-      }).then(() => true).catch(() => false);
+      ).filter({ hasNotText: /Pilih Deskripsi|No results|Tidak ada hasil|Mencari|Searching/i }).first();
+
+      // The KBKI description list is loaded asynchronously by the staging
+      // application.  A fast first search can legitimately display "No
+      // results" while the request is still in flight, so retry the exact
+      // user action (open search, type b, wait) before failing the flow.
+      let visibleOptionFound = false;
+      for (let attempt = 1; attempt <= 3 && !visibleOptionFound; attempt++) {
+        await liveSearch.fill('');
+        await liveSearch.pressSequentially('b', { delay: 150 });
+        visibleOptionFound = await descriptionOption.waitFor({
+          state: 'visible',
+          timeout: 20000,
+        }).then(() => true).catch(() => false);
+        if (!visibleOptionFound && attempt < 3) {
+          await this.page.waitForTimeout(2500);
+          await descriptionToggle.click().catch(() => {});
+          await this.page.waitForTimeout(300);
+          await descriptionToggle.click().catch(() => {});
+          await liveSearch.waitFor({
+            state: 'visible',
+            timeout: 10000,
+          });
+        }
+      }
       if (visibleOptionFound) {
         await descriptionOption.click();
       } else {

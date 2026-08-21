@@ -13,9 +13,11 @@ Automation end-to-end proses paket **Non-Tender – Penunjukan Langsung** pada S
 | 3 | 3 anggota Pokja | Melengkapi paket dan menyetujui Pakta Integritas | `POKJA_APPROVED` |
 | 4 | Penyedia | Menyetujui Pakta Integritas dan mengikuti paket | `ACCEPTED_BY_PROVIDER` |
 | 5 | Penyedia + Pokja | Lima pertanyaan pemberian penjelasan dan lima jawaban | `FLOW5_EXPLANATION_COMPLETED` |
-| 6 | Penyedia | Memilih dan mengirim Data Kualifikasi | `FLOW6_QUALIFICATION_SENT` |
+| 6 | Penyedia | Mengirim kualifikasi, Surat Penawaran, teknis, harga, PPN, dan TKDN/PDN | `FLOW6_SUBMISSION_COMPLETED` |
 
 Manifest default berada di `packages/web-automation/spse/runtime/packages/<package-id>.json`. Folder runtime diabaikan Git karena berisi state lokal.
+
+Panduan visual lengkap dengan screenshot setiap tindakan tersedia di [`packages/web-automation/docs/visual-guide-flow1-6-20260821/README.md`](packages/web-automation/docs/visual-guide-flow1-6-20260821/README.md). Panduan tersebut memakai satu eksekusi headed terbaru dari Flow 1 sampai Flow 6.
 
 ## Persiapan
 
@@ -450,7 +452,7 @@ npm run test:spse:headed -- \
 
 Pertanyaan, jawaban, sesi, dan waktu dapat diubah di `packages/web-automation/spse/fixtures/data/flow5.data.js`.
 
-## Flow 6 — Upload Data Kualifikasi
+## Flow 6 — Upload Dokumen Penawaran (kualifikasi + teknis + harga)
 
 Inspeksi form tanpa mengirim:
 
@@ -460,7 +462,7 @@ npm run test:spse:headed -- \
   --project=spse --workers=1
 ```
 
-Pilih dan kirim Data Kualifikasi:
+Kirim Data Kualifikasi terlebih dahulu:
 
 ```bash
 npm run test:spse:headed -- \
@@ -473,23 +475,40 @@ npm run test:spse:headed -- \
 3. Pilih Izin Usaha, Personel, Pengalaman, Pekerjaan Berjalan, dan Peralatan.
 4. Upload dokumen persyaratan lain menggunakan data test.
 5. Kirim Data Kualifikasi dan validasi penyimpanan.
-6. Status menjadi `FLOW6_QUALIFICATION_SENT`.
+6. Status kualifikasi menjadi terkirim.
 
 Konfigurasi ada di `packages/web-automation/spse/fixtures/data/flow6.data.js`. Nilai `'all'` memilih seluruh data; array seperti `[0]` memilih hanya data pertama.
 
-> Batasan saat ini: pengiriman Surat Penawaran, penawaran teknis, harga/PPN, TKDN, dan validasi TTE lengkap masih perlu dilanjutkan setelah struktur form environment stabil.
+Kirim bagian penawaran:
+
+```bash
+npm run test:spse:headed -- \
+  spse/tests/e2e/flow6-offer.spec.js \
+  --project=spse --workers=1
+```
+
+1. Isi masa berlaku Surat Penawaran (fixture default: 90 hari) dan setujui.
+2. Upload seluruh dokumen teknis (fixture default: enam persyaratan menggunakan `datatest.pdf`).
+3. Isi harga sebelum PPN; sistem menghitung PPN 11% dan menolak nilai di atas HPS.
+4. Isi TKDN/PDN 0–100% dan upload lampiran harga bila diperlukan.
+5. Simpan, klik **Kirim Penawaran**, lalu validasi status Surat Penawaran, Teknis, dan Harga menjadi **Sudah Kirim**.
+6. Validasi download dokumen harga dan catat bukti elektronik bila ditampilkan oleh UI.
+7. Status akhir menjadi `FLOW6_SUBMISSION_COMPLETED`.
+
+Pada eksekusi staging terbaru, nilai sebelum PPN Rp9.000.000.000 + PPN 11% Rp990.000.000 = Rp9.990.000.000, masih di bawah HPS Rp10.000.000.000. UI saat ini belum menampilkan link TTE/Bukti Penyampaian; manifest mencatatnya sebagai `NOT_EXPOSED_BY_CURRENT_UI`.
 
 ## Menjalankan Flow 1–6 berurutan
 
 Jalankan Flow 1, isi `SPSE_PACKAGE_MANIFEST`, kemudian jalankan Flow 2–6 satu per satu:
 
 ```bash
-npm run test:spse:headed -- spse/tests/e2e/create-non-tender.spec.js --project=spse --workers=1
-npm run test:spse:headed -- spse/tests/e2e/approve-non-tender-ukpbj.spec.js --project=spse --workers=1
+npm run test:spse:headed -- spse/tests/e2e/create-health-construction-non-tender.spec.js --project=spse --workers=1
+npm run test:spse:headed -- spse/tests/e2e/approve-health-construction-ukpbj.spec.js --project=spse --workers=1
 npm run test:spse:headed -- spse/tests/e2e/approve-non-tender-pokja.spec.js --project=spse --workers=1
 npm run test:spse:headed -- spse/tests/e2e/accept-non-tender-provider.spec.js --project=spse --workers=1
 npm run test:spse:headed -- spse/tests/e2e/flow5-explanation.spec.js --project=spse --workers=1
 npm run test:spse:headed -- spse/tests/e2e/flow6-qualification.spec.js --project=spse --workers=1
+npm run test:spse:headed -- spse/tests/e2e/flow6-offer.spec.js --project=spse --workers=1
 ```
 
 ## Screenshot, tools, dan troubleshooting

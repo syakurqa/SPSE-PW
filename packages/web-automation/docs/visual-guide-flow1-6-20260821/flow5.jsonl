@@ -1,0 +1,45 @@
+{"step":1,"flow":"flow5","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai anggota Pokja","expected":"Halaman autentikasi ditampilkan.","image":"flow5/01-klik-login-untuk-masuk-sebagai-anggota-pokja.png"}
+{"step":2,"flow":"flow5","action":"Isi","instruction":"Isi Alamat email akun Penyedia","expected":"Email Penyedia siap diproses.","image":"flow5/02-isi-alamat-email-akun-penyedia.png"}
+{"step":3,"flow":"flow5","action":"Isi","instruction":"Isi Sandi akun Penyedia","expected":"Sandi tersimpan secara tersensor.","image":"flow5/03-isi-sandi-akun-penyedia.png"}
+{"step":4,"flow":"flow5","action":"Klik","instruction":"Klik Lanjutkan tanpa Security Key","expected":"Proses login Pokja berlanjut.","image":"flow5/04-klik-lanjutkan-tanpa-security-key.png"}
+{"step":5,"flow":"flow5","action":"Pilih","instruction":"Pilih Sesi #25","expected":"Sesi #25 menjadi sesi pelatihan aktif.","image":"flow5/05-pilih-sesi-25.png"}
+{"step":6,"flow":"flow5","action":"Isi","instruction":"Ubah waktu Sesi #25 menjadi 23-08-2026 10:00 WIB","expected":"Waktu sesi berada dalam tahap Pemberian Penjelasan.","image":"flow5/06-ubah-waktu-sesi-25-menjadi-23-08-2026-10-00-wib.png"}
+{"step":7,"flow":"flow5","action":"Klik","instruction":"Klik BERANDA untuk membuka paket yang telah diikuti","expected":"Beranda dan daftar paket yang diikuti Penyedia terbuka.","image":"flow5/07-klik-beranda-untuk-membuka-paket-yang-telah-diikuti.png"}
+{"step":8,"flow":"flow5","action":"Klik","instruction":"Pilih tab Non Tender","expected":"Tabel paket Non Tender ditampilkan.","image":"flow5/08-pilih-tab-non-tender.png"}
+{"step":9,"flow":"flow5","action":"Klik","instruction":"Buka paket [QA] [Penunjukan Langsung] [Automation] [070] - 65914625Belanja Obat-Obatan-Obat-Obatan Lainnya - Bahan Reagent (5.1.02.01.01.0038.06)BLUDPenunjukan LangsungRp 10,5 M2026Pengadaan BarangDINAS KESEHATAN - 1787328648283","expected":"Detail paket yang telah diikuti Penyedia ditampilkan.","image":"flow5/09-buka-paket-qa-penunjukan-langsung-automation-070-65914625bel.png"}
+{"step":10,"flow":"flow5","action":"Klik","instruction":"Buka tab Pertanyaan dan Penjelasan","expected":"Forum Pemberian Penjelasan paket terbuka.","image":"flow5/10-buka-tab-pertanyaan-dan-penjelasan.png"}
+{"step":11,"flow":"flow5","action":"Klik","instruction":"Klik Kirim Pertanyaan untuk pertanyaan 1","expected":"Form pertanyaan terbuka.","image":"flow5/11-klik-kirim-pertanyaan-untuk-pertanyaan-1.png"}
+{"step":12,"flow":"flow5","action":"Klik","instruction":"Kirim pertanyaan 1","expected":"Pertanyaan 1 tersimpan pada forum.","image":"flow5/12-kirim-pertanyaan-1.png"}
+{"step":13,"flow":"flow5","action":"Klik","instruction":"Klik Kirim Pertanyaan untuk pertanyaan 2","expected":"Form pertanyaan terbuka.","image":"flow5/13-klik-kirim-pertanyaan-untuk-pertanyaan-2.png"}
+{"step":14,"flow":"flow5","action":"Klik","instruction":"Kirim pertanyaan 2","expected":"Pertanyaan 2 tersimpan pada forum.","image":"flow5/14-kirim-pertanyaan-2.png"}
+{"step":15,"flow":"flow5","action":"Klik","instruction":"Klik Kirim Pertanyaan untuk pertanyaan 3","expected":"Form pertanyaan terbuka.","image":"flow5/15-klik-kirim-pertanyaan-untuk-pertanyaan-3.png"}
+{"step":16,"flow":"flow5","action":"Klik","instruction":"Kirim pertanyaan 3","expected":"Pertanyaan 3 tersimpan pada forum.","image":"flow5/16-kirim-pertanyaan-3.png"}
+{"step":17,"flow":"flow5","action":"Klik","instruction":"Klik Kirim Pertanyaan untuk pertanyaan 4","expected":"Form pertanyaan terbuka.","image":"flow5/17-klik-kirim-pertanyaan-untuk-pertanyaan-4.png"}
+{"step":18,"flow":"flow5","action":"Klik","instruction":"Kirim pertanyaan 4","expected":"Pertanyaan 4 tersimpan pada forum.","image":"flow5/18-kirim-pertanyaan-4.png"}
+{"step":19,"flow":"flow5","action":"Klik","instruction":"Klik Kirim Pertanyaan untuk pertanyaan 5","expected":"Form pertanyaan terbuka.","image":"flow5/19-klik-kirim-pertanyaan-untuk-pertanyaan-5.png"}
+{"step":20,"flow":"flow5","action":"Klik","instruction":"Kirim pertanyaan 5","expected":"Pertanyaan 5 tersimpan pada forum.","image":"flow5/20-kirim-pertanyaan-5.png"}
+{"step":21,"flow":"flow5","action":"Download","instruction":"Penyedia mengunduh lampiran 1","expected":"File selesai diunduh dan tidak kosong.","image":"flow5/21-penyedia-mengunduh-lampiran-1.png"}
+{"step":22,"flow":"flow5","action":"Download","instruction":"Penyedia mengunduh lampiran 2","expected":"File selesai diunduh dan tidak kosong.","image":"flow5/22-penyedia-mengunduh-lampiran-2.png"}
+{"step":23,"flow":"flow5","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai anggota Pokja","expected":"Halaman autentikasi ditampilkan.","image":"flow5/23-klik-login-untuk-masuk-sebagai-anggota-pokja.png"}
+{"step":24,"flow":"flow5","action":"Isi","instruction":"Isi Alamat email anggota Pokja","expected":"Email siap diproses.","image":"flow5/24-isi-alamat-email-anggota-pokja.png"}
+{"step":25,"flow":"flow5","action":"Isi","instruction":"Isi Sandi anggota Pokja","expected":"Sandi tersimpan secara tersensor.","image":"flow5/25-isi-sandi-anggota-pokja.png"}
+{"step":26,"flow":"flow5","action":"Klik","instruction":"Klik Lanjutkan tanpa Security Key","expected":"Proses login Pokja berlanjut.","image":"flow5/26-klik-lanjutkan-tanpa-security-key.png"}
+{"step":27,"flow":"flow5","action":"Pilih","instruction":"Pilih role Anggota Pokja Pemilihan Kota Cirebon","expected":"Dashboard Pokja terbuka.","image":"flow5/27-pilih-role-anggota-pokja-pemilihan-kota-cirebon.png"}
+{"step":28,"flow":"flow5","action":"Pilih","instruction":"Pilih Sesi #25","expected":"Sesi #25 menjadi sesi pelatihan aktif.","image":"flow5/28-pilih-sesi-25.png"}
+{"step":29,"flow":"flow5","action":"Isi","instruction":"Ubah waktu Sesi #25 menjadi 23-08-2026 10:00 WIB","expected":"Waktu sesi berada dalam tahap Pemberian Penjelasan.","image":"flow5/29-ubah-waktu-sesi-25-menjadi-23-08-2026-10-00-wib.png"}
+{"step":30,"flow":"flow5","action":"Klik","instruction":"Klik DAFTAR PAKET pada dashboard Pokja","expected":"Daftar paket Pokja ditampilkan.","image":"flow5/30-klik-daftar-paket-pada-dashboard-pokja.png"}
+{"step":31,"flow":"flow5","action":"Klik","instruction":"Klik tab Non Tender","expected":"Paket Penunjukan Langsung ditampilkan.","image":"flow5/31-klik-tab-non-tender.png"}
+{"step":32,"flow":"flow5","action":"Klik","instruction":"Klik Buat Non Tender pada paket yang ditugaskan","expected":"Halaman konfigurasi paket terbuka.","image":"flow5/32-klik-buat-non-tender-pada-paket-yang-ditugaskan.png"}
+{"step":33,"flow":"flow5","action":"Klik","instruction":"Buka tab Pertanyaan dan Penjelasan","expected":"Forum Pemberian Penjelasan paket terbuka.","image":"flow5/33-buka-tab-pertanyaan-dan-penjelasan.png"}
+{"step":34,"flow":"flow5","action":"Klik","instruction":"Klik Jawab untuk pertanyaan 1","expected":"Editor jawaban Pokja ditampilkan.","image":"flow5/34-klik-jawab-untuk-pertanyaan-1.png"}
+{"step":35,"flow":"flow5","action":"Klik","instruction":"Kirim penjelasan untuk pertanyaan 1","expected":"Penjelasan 1 tersimpan dan counter bertambah.","image":"flow5/35-kirim-penjelasan-untuk-pertanyaan-1.png"}
+{"step":36,"flow":"flow5","action":"Klik","instruction":"Klik Jawab untuk pertanyaan 2","expected":"Editor jawaban Pokja ditampilkan.","image":"flow5/36-klik-jawab-untuk-pertanyaan-2.png"}
+{"step":37,"flow":"flow5","action":"Klik","instruction":"Kirim penjelasan untuk pertanyaan 2","expected":"Penjelasan 2 tersimpan dan counter bertambah.","image":"flow5/37-kirim-penjelasan-untuk-pertanyaan-2.png"}
+{"step":38,"flow":"flow5","action":"Klik","instruction":"Klik Jawab untuk pertanyaan 3","expected":"Editor jawaban Pokja ditampilkan.","image":"flow5/38-klik-jawab-untuk-pertanyaan-3.png"}
+{"step":39,"flow":"flow5","action":"Klik","instruction":"Kirim penjelasan untuk pertanyaan 3","expected":"Penjelasan 3 tersimpan dan counter bertambah.","image":"flow5/39-kirim-penjelasan-untuk-pertanyaan-3.png"}
+{"step":40,"flow":"flow5","action":"Klik","instruction":"Klik Jawab untuk pertanyaan 4","expected":"Editor jawaban Pokja ditampilkan.","image":"flow5/40-klik-jawab-untuk-pertanyaan-4.png"}
+{"step":41,"flow":"flow5","action":"Klik","instruction":"Kirim penjelasan untuk pertanyaan 4","expected":"Penjelasan 4 tersimpan dan counter bertambah.","image":"flow5/41-kirim-penjelasan-untuk-pertanyaan-4.png"}
+{"step":42,"flow":"flow5","action":"Klik","instruction":"Klik Jawab untuk pertanyaan 5","expected":"Editor jawaban Pokja ditampilkan.","image":"flow5/42-klik-jawab-untuk-pertanyaan-5.png"}
+{"step":43,"flow":"flow5","action":"Klik","instruction":"Kirim penjelasan untuk pertanyaan 5","expected":"Penjelasan 5 tersimpan dan counter bertambah.","image":"flow5/43-kirim-penjelasan-untuk-pertanyaan-5.png"}
+{"step":44,"flow":"flow5","action":"Download","instruction":"Pokja mengunduh lampiran 1","expected":"File selesai diunduh dan tidak kosong.","image":"flow5/44-pokja-mengunduh-lampiran-1.png"}
+{"step":45,"flow":"flow5","action":"Download","instruction":"Pokja mengunduh lampiran 2","expected":"File selesai diunduh dan tidak kosong.","image":"flow5/45-pokja-mengunduh-lampiran-2.png"}

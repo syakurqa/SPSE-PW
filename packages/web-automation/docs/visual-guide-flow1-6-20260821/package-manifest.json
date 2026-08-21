@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "runId": "01M0JHDKPG5FN4VX636KT6CWJ2",
+  "packageId": "01M0JHDKPG5FN4VX636KT6CWJ2",
+  "packageName": "[QA] [Penunjukan Langsung] [Automation] [070] - 65914625Belanja Obat-Obatan-Obat-Obatan Lainnya - Bahan Reagent (5.1.02.01.01.0038.06)BLUDPenunjukan LangsungRp 10,5 M2026Pengadaan BarangDINAS KESEHATAN - 1787328648283",
+  "packageUrl": "https://pengadaan-stg-2.eproc.dev/spse/paketnontender/01M0JHDKPG5FN4VX636KT6CWJ2/edit?step=3",
+  "packageType": "Non-Tender",
+  "flowName": "Flow 1 Dinas Kesehatan Pengadaan Barang Penunjukan Langsung",
+  "metodePemilihan": "Penunjukan Langsung",
+  "jenisPengadaan": "Pengadaan Barang",
+  "satker": "DINAS KESEHATAN",
+  "rupName": "65914625Belanja Obat-Obatan-Obat-Obatan Lainnya - Bahan Reagent (5.1.02.01.01.0038.06)BLUDPenunjukan LangsungRp 10,5 M2026Pengadaan BarangDINAS KESEHATAN",
+  "rupMethod": "Penunjukan Langsung",
+  "rupPagu": 10500000000,
+  "hps": 10000000000,
+  "requiresKbki": true,
+  "assignedRole": "Kepala UKPBJ",
+  "status": "FLOW6_SUBMISSION_COMPLETED",
+  "createdAt": "2026-08-21T16:11:43.817Z",
+  "approvedBy": "Kepala UKPBJ",
+  "approvedAt": "2026-08-21T16:14:11.062Z",
+  "procurementPackageId": "01M0JHDKRDKRM4VSAR79Q58CS6",
+  "pokjaApprovals": [
+    {
+      "memberIndex": 1,
+      "member": "Pokja 1",
+      "username": "spsepokjammm@mailnesia.com",
+      "approvedAt": "2026-08-21T16:23:31.473Z"
+    },
+    {
+      "memberIndex": 2,
+      "member": "Pokja 2",
+      "username": "spsepokjamms@mailnesia.com",
+      "approvedAt": "2026-08-21T16:23:55.638Z"
+    },
+    {
+      "memberIndex": 3,
+      "member": "Pokja 3",
+      "username": "spsepokjamsm@mailnesia.com",
+      "approvedAt": "2026-08-21T16:24:19.310Z"
+    }
+  ],
+  "acceptedByProvider": "ANGSAE BARU",
+  "acceptedByProviderAt": "2026-08-21T16:25:07.889Z",
+  "providerHomeValidatedAt": "2026-08-21T16:25:07.889Z",
+  "flow5ProviderQuestionCount": 5,
+  "flow5ProviderQuestionsSentAt": "2026-08-21T16:26:59.794Z",
+  "flow5ProviderAttachmentDownloads": [
+    {
+      "document": "Dokumen Pemilihan",
+      "chapter": "Ruang Lingkup dan Kuantitas Barang",
+      "fileName": "datatest.pdf",
+      "size": 147846
+    },
+    {
+      "document": "Spesifikasi Teknis",
+      "chapter": "Mutu, Masa Simpan, dan Penyimpanan",
+      "fileName": "datatest.pdf",
+      "size": 147846
+    }
+  ],
+  "flow5ProviderDownloadsValidatedAt": "2026-08-21T16:26:59.794Z",
+  "flow5PokjaAnswerCount": 5,
+  "flow5Session": 25,
+  "flow5ExplanationTime": "23-08-2026 10:00",
+  "flow5PokjaAttachmentDownloads": [
+    {
+      "document": "Dokumen Pemilihan",
+      "chapter": "Ruang Lingkup dan Kuantitas Barang",
+      "fileName": "datatest.pdf",
+      "size": 147846
+    },
+    {
+      "document": "Spesifikasi Teknis",
+      "chapter": "Mutu, Masa Simpan, dan Penyimpanan",
+      "fileName": "datatest.pdf",
+      "size": 147846
+    }
+  ],
+  "flow5PokjaDownloadsValidatedAt": "2026-08-21T16:28:07.503Z",
+  "flow5CompletedAt": "2026-08-21T16:28:07.503Z",
+  "flow6QualificationSelections": {
+    "businessPermits": 8,
+    "personnel": 3,
+    "experience": 5,
+    "ongoingWork": 5,
+    "equipment": 3
+  },
+  "flow6QualificationUpload": {
+    "fileName": "datatest.pdf",
+    "size": 147846,
+    "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+    "evidence": {
+      "type": "filename",
+      "marker": "Dokumen Persyaratan Kualifikasi Lainnya:\n                    \n\t                    \n\t                        - Dokumen Belum Terkirim\n\t                        \n\t                        \n\t\t                     datatest.pdf \n\t                        \n\t                    \n\t                    \n\t      "
+    }
+  },
+  "flow6QualificationStatus": "Kualifikasi Data Kualifikasi Dokumen Kualifikasi Status: Sudah dikirim pada : 24 Agustus 2026 10:00 WIB Lihat Data Ubah Data Batal Kirim",
+  "flow6QualificationSentAt": "2026-08-21T16:29:43.641Z",
+  "flow6OfferValidityDays": 90,
+  "flow6OfferStatusAfterLetter": "Penawaran Anda Dokumen Penawaran Administrasi, Teknis, dan Harga Status Pengiriman Dokumen Surat Penawaran : Sudah Kirim ( 24 Agustus 2026 10:00 WIB ) Dokumen Teknis : Belum Kirim Dokumen Harga : Belum Kirim Total Penawaran : Kirim Penawaran",
+  "flow6OfferLetterSentAt": "2026-08-21T16:30:31.628Z",
+  "flow6TechnicalUploads": [
+    {
+      "requirementId": "01M0JJ2WKEWQ8GB6T071SXHPBS",
+      "requirement": "Persyaratan Teknis 1",
+      "fileName": "datatest.pdf",
+      "size": 147846,
+      "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+      "response": "POST 200 https://pengadaan-stg-2.eproc.dev/spse/action/nonlelang.dokumenplctr/submitpenawaranteknis?psr_id=01M0JJ7QJ0JRPASYYP1TH2PGM3&lls_id=01M0JHDKRDKRM4VSAR79Q58CS6&chk_id=01M0JJ2WKEWQ8GB6T071SXHPBS",
+      "downloadUrl": "/spse/dlsec/3768954850d2e2c8064dc36ba996eaec6344f551487ca26caafdf2c14b9f183aa3cab9035fee8a0bf693f73552f68c4ec3ca9c4509ce89ae21d303948fc156fe40511598307d500523f9cc892bd6f497d005f714adad727c91a05645492d166a7248cd99c45182ea13366c0739dc538f"
+    },
+    {
+      "requirementId": "01M0JJ2WKNV4E8M5V2KX67ZQE5",
+      "requirement": "Persyaratan Teknis 2",
+      "fileName": "datatest.pdf",
+      "size": 147846,
+      "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+      "response": "POST 200 https://pengadaan-stg-2.eproc.dev/spse/action/nonlelang.dokumenplctr/submitpenawaranteknis?psr_id=01M0JJ7QJ0JRPASYYP1TH2PGM3&lls_id=01M0JHDKRDKRM4VSAR79Q58CS6&chk_id=01M0JJ2WKNV4E8M5V2KX67ZQE5",
+      "downloadUrl": "/spse/dlsec/2a6bbd408e64f14d3dc60e8bd86f28d671f283157ad51eff0dd52d82b72fb4af841cd5575deb13a9f087aa98dba4a71e152ea926e37a9f868e206303a2f27f7d40511598307d500523f9cc892bd6f497d005f714adad727c91a05645492d166a7248cd99c45182ea13366c0739dc538f"
+    },
+    {
+      "requirementId": "01M0JJ2WKW2E99Z4N0G26VG2QQ",
+      "requirement": "Persyaratan Teknis 3",
+      "fileName": "datatest.pdf",
+      "size": 147846,
+      "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+      "response": "POST 200 https://pengadaan-stg-2.eproc.dev/spse/action/nonlelang.dokumenplctr/submitpenawaranteknis?psr_id=01M0JJ7QJ0JRPASYYP1TH2PGM3&lls_id=01M0JHDKRDKRM4VSAR79Q58CS6&chk_id=01M0JJ2WKW2E99Z4N0G26VG2QQ",
+      "downloadUrl": "/spse/dlsec/35ebe00062a971b8a8307edd4f1c4cb2dea85c5b1a1b0fe716a9d706937a95c6e5dd306f5c60510fa91ec9fdaf4d895ccd5b5d594bb62c4cff473581b4b52dc940511598307d500523f9cc892bd6f497d005f714adad727c91a05645492d166a7248cd99c45182ea13366c0739dc538f"
+    },
+    {
+      "requirementId": "01M0JJ2WM3SYABEK21RQFCW93B",
+      "requirement": "Persyaratan Teknis 4",
+      "fileName": "datatest.pdf",
+      "size": 147846,
+      "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+      "response": "POST 200 https://pengadaan-stg-2.eproc.dev/spse/action/nonlelang.dokumenplctr/submitpenawaranteknis?psr_id=01M0JJ7QJ0JRPASYYP1TH2PGM3&lls_id=01M0JHDKRDKRM4VSAR79Q58CS6&chk_id=01M0JJ2WM3SYABEK21RQFCW93B",
+      "downloadUrl": "/spse/dlsec/55238021afd78590aa45e107393f522db6799aed1fdda258f02b176e6f73584e2ffc01c0c4af723dffc999fb76b3fd269cc22989fe4e896e395f9f1c05a6130fc241ebf711fec15cdb56286dda68f12a7a1fa9f46a7eedf853ad3a78ba2a1b0efc1bfad59ed4e69e29c3e23c1d877fbe"
+    },
+    {
+      "requirementId": "01M0JJ2WM9ANQ7184CSZ5WHAY5",
+      "requirement": "Persyaratan Teknis 5",
+      "fileName": "datatest.pdf",
+      "size": 147846,
+      "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+      "response": "POST 200 https://pengadaan-stg-2.eproc.dev/spse/action/nonlelang.dokumenplctr/submitpenawaranteknis?psr_id=01M0JJ7QJ0JRPASYYP1TH2PGM3&lls_id=01M0JHDKRDKRM4VSAR79Q58CS6&chk_id=01M0JJ2WM9ANQ7184CSZ5WHAY5",
+      "downloadUrl": "/spse/dlsec/858d82376f06682d837ea3139bd1a226ff1fdb92355e67cd13145272480c5fb62a1b093740a4a47ee629446993c6250ea6f5f6d121cc49eb12ba9996e96e49b440511598307d500523f9cc892bd6f497d005f714adad727c91a05645492d166a7248cd99c45182ea13366c0739dc538f"
+    },
+    {
+      "requirementId": "01M0JJ2WMFYHY5JTR9W35NHSHE",
+      "requirement": "Persyaratan Teknis 6",
+      "fileName": "datatest.pdf",
+      "size": 147846,
+      "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+      "response": "POST 200 https://pengadaan-stg-2.eproc.dev/spse/action/nonlelang.dokumenplctr/submitpenawaranteknis?psr_id=01M0JJ7QJ0JRPASYYP1TH2PGM3&lls_id=01M0JHDKRDKRM4VSAR79Q58CS6&chk_id=01M0JJ2WMFYHY5JTR9W35NHSHE",
+      "downloadUrl": "/spse/dlsec/29b4933ae422d55549fd20dcb91c827b9ee2c520cd649685207f92c9fd2b4690392d7ed81be9711ad2dc617bdfa9268e3d657abb7e469cb5a9578954acdb0dfe40511598307d500523f9cc892bd6f497d005f714adad727c91a05645492d166a7248cd99c45182ea13366c0739dc538f"
+    }
+  ],
+  "flow6OfferStatusAfterTechnical": "Penawaran Anda Dokumen Penawaran Administrasi, Teknis, dan Harga Status Pengiriman Dokumen Surat Penawaran : Sudah Kirim ( 24 Agustus 2026 10:00 WIB ) Dokumen Teknis : Sudah Kirim ( 24 Agustus 2026 10:03 WIB ) Dokumen Harga : Belum Kirim Total Penawaran : Kirim Penawaran",
+  "flow6TechnicalSentAt": "2026-08-21T16:34:24.149Z",
+  "flow6PriceRequirementUploads": [
+    {
+      "requirementId": "01M0JJ2WNBTSNNEVW74N5E9RWM",
+      "requirement": "Persyaratan Harga 1",
+      "fileName": "datatest.pdf",
+      "size": 147846,
+      "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+      "response": "POST 200 https://pengadaan-stg-2.eproc.dev/spse/action/nonlelang.dokumenplctr/uploadpenawaranhargakonstruksi?psr_id=01M0JJ7QJ0JRPASYYP1TH2PGM3&lls_id=01M0JHDKRDKRM4VSAR79Q58CS6&chk_id=01M0JJ2WNBTSNNEVW74N5E9RWM",
+      "downloadUrl": "/spse/dlsec/54c2333111ed994f71bec86a7b0cb81345c2b3853ef3b6816b186e6dc1e501b39443668f059f924ae6643452d674f81f85d996322b4e0aaabc8c5de96c9395b040511598307d500523f9cc892bd6f497d005f714adad727c91a05645492d166a7248cd99c45182ea13366c0739dc538f"
+    },
+    {
+      "requirementId": "01M0JJ2WNHNWXBA4QZ0AX6CHJ4",
+      "requirement": "Persyaratan Harga 2",
+      "fileName": "datatest.pdf",
+      "size": 147846,
+      "sha256": "906e356833e219fc8d368930184a010f1b628a48ee55096eb447a64472244eba",
+      "response": "POST 200 https://pengadaan-stg-2.eproc.dev/spse/action/nonlelang.dokumenplctr/uploadpenawaranhargakonstruksi?psr_id=01M0JJ7QJ0JRPASYYP1TH2PGM3&lls_id=01M0JHDKRDKRM4VSAR79Q58CS6&chk_id=01M0JJ2WNHNWXBA4QZ0AX6CHJ4",
+      "downloadUrl": "/spse/dlsec/e72d3b22c858fc0cbee411e4ad635858a2d8c8568afae441bc4254388ea0741459b0b671e4710f9e431a265186a4a39e649f59bc407d31e37b9f02811927658ec241ebf711fec15cdb56286dda68f12a7a1fa9f46a7eedf853ad3a78ba2a1b0efc1bfad59ed4e69e29c3e23c1d877fbe"
+    }
+  ],
+  "flow6Price": {
+    "priceBeforeVat": 9000000000,
+    "vatPercent": 11,
+    "tax": 990000000,
+    "total": 9990000000,
+    "tkdnPercent": 20,
+    "totalPdn": 1998000000,
+    "submittedPdn": 1998000000,
+    "hps": 10000000000,
+    "savedRow": {
+      "item": "Pipa",
+      "unit": "paket",
+      "vol": 1,
+      "unit2": "",
+      "vol2": 1,
+      "harga": 9000000000,
+      "total_harga": 9990000000,
+      "keterangan": "",
+      "pajak": 11,
+      "kunci": false,
+      "pdn": false,
+      "kbki": "27 - 279 - 2799 - 27998 - 2799800 - 2799800005 - Pipa/ slang kain",
+      "total": 990000000
+    },
+    "tkdnUiValueAfterReload": 0,
+    "tkdnUiPersisted": false,
+    "tkdnPersistenceNote": "Server menerima payload Total PDN, tetapi input persentase PDN kembali 0 setelah reload."
+  },
+  "flow6OfferStatusAfterPrice": "Penawaran Anda Dokumen Penawaran Administrasi, Teknis, dan Harga Status Pengiriman Dokumen Surat Penawaran : Sudah Kirim ( 24 Agustus 2026 10:00 WIB ) Dokumen Teknis : Sudah Kirim ( 24 Agustus 2026 10:03 WIB ) Dokumen Harga : Sudah Kirim ( 24 Agustus 2026 10:01 WIB ) Download Penawaran Harga Total Penawaran : Rp. 9.990.000.000,00 Kirim Penawaran",
+  "flow6PriceSavedAt": "2026-08-21T16:36:03.698Z",
+  "flow6FinalSubmissionEvidence": {
+    "status": "Penawaran Anda Dokumen Penawaran Administrasi, Teknis, dan Harga Status Pengiriman Dokumen Surat Penawaran : Sudah Kirim ( 24 Agustus 2026 10:00 WIB ) Dokumen Teknis : Sudah Kirim ( 24 Agustus 2026 10:03 WIB ) Dokumen Harga : Sudah Kirim ( 24 Agustus 2026 10:01 WIB ) Download Penawaran Harga Total Penawaran : Rp. 9.990.000.000,00 Kirim Penawaran",
+    "total": 9990000000,
+    "receipt": {
+      "status": "NOT_EXPOSED_BY_CURRENT_UI",
+      "note": "Tidak ada link Tanda Terima Elektronik/Bukti Penyampaian/TTE pada halaman paket maupun wizard penawaran."
+    },
+    "priceDocument": {
+      "label": "Penawaran Harga",
+      "fileName": "penawaran-ANGSAE BARU.xlsx",
+      "size": 3806,
+      "sha256": "46fb3aa54dbec26abd89d1eee47ab463d1703cdb224118541f566712ed74f98a",
+      "url": "/spse/pesertanontender/01M0JJ7QJ0JRPASYYP1TH2PGM3/getexcelldkh"
+    }
+  },
+  "flow6CompletedAt": "2026-08-21T16:36:26.844Z"
+}

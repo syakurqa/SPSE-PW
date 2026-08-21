@@ -87,7 +87,7 @@ test.describe('SPSE Persetujuan Non-Tender oleh tiga anggota Pokja', () => {
             manifest.pokjaApprovals = pokjaApprovals;
             return;
           } catch (error) {
-            const retryableGatewayFailure = /Login Pokja gagal|Akses Anda Ditolak|Pilihan role Pokja tidak tersedia/.test(
+            const retryableGatewayFailure = /Login Pokja gagal|Akses Anda Ditolak|Pilihan role Pokja tidak tersedia|Pilihan Deskripsi KBKI tidak muncul|KBKI tidak ditemukan/.test(
               error.message
             );
             if (!retryableGatewayFailure || attempt === 3) {

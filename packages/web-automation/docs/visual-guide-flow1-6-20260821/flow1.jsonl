@@ -1,0 +1,20 @@
+{"step":1,"flow":"flow1","action":"Klik","instruction":"Klik LOGIN untuk masuk sebagai PPK","expected":"Halaman autentikasi INAPROC terbuka.","image":"flow1/01-klik-login-untuk-masuk-sebagai-ppk.png"}
+{"step":2,"flow":"flow1","action":"Isi","instruction":"Isi Alamat email akun PPK","expected":"Email siap diproses.","image":"flow1/02-isi-alamat-email-akun-ppk.png"}
+{"step":3,"flow":"flow1","action":"Klik","instruction":"Klik Lanjut setelah email PPK","expected":"Form Sandi ditampilkan.","image":"flow1/03-klik-lanjut-setelah-email-ppk.png"}
+{"step":4,"flow":"flow1","action":"Isi","instruction":"Isi Sandi PPK","expected":"Sandi tersimpan secara tersensor.","image":"flow1/04-isi-sandi-ppk.png"}
+{"step":5,"flow":"flow1","action":"Pilih","instruction":"Pilih role PPK untuk satker yang sesuai","expected":"Dashboard PPK terbuka.","image":"flow1/05-pilih-role-ppk-untuk-satker-yang-sesuai.png"}
+{"step":6,"flow":"flow1","action":"Klik","instruction":"Buka menu navigasi DAFTAR PAKET","expected":"Menu dropdown paket tampil.","image":"flow1/06-buka-menu-navigasi-daftar-paket.png"}
+{"step":7,"flow":"flow1","action":"Klik","instruction":"Klik tab Non Tender","expected":"Daftar paket Non Tender ditampilkan.","image":"flow1/07-klik-tab-non-tender.png"}
+{"step":8,"flow":"flow1","action":"Klik","instruction":"Klik Buat Paket","expected":"Form pemilihan RUP terbuka.","image":"flow1/08-klik-buat-paket.png"}
+{"step":9,"flow":"flow1","action":"Pilih","instruction":"Pilih Satuan Kerja DINAS KESEHATAN","expected":"RUP difilter untuk satuan kerja tersebut.","image":"flow1/09-pilih-satuan-kerja-dinas-kesehatan.png"}
+{"step":10,"flow":"flow1","action":"Pilih","instruction":"Pilih Metode Pemilihan Penunjukan Langsung","expected":"Tabel hanya menampilkan RUP dengan metode yang sesuai.","image":"flow1/10-pilih-metode-pemilihan-penunjukan-langsung.png"}
+{"step":11,"flow":"flow1","action":"Pilih","instruction":"Pilih Jenis Pengadaan Pengadaan Barang","expected":"Jenis pengadaan paket terpilih.","image":"flow1/11-pilih-jenis-pengadaan-pengadaan-barang.png"}
+{"step":12,"flow":"flow1","action":"Pilih","instruction":"Pilih checkbox RUP: 65914625Belanja Obat-Obatan-Obat-Obatan Lainnya - ...","expected":"RUP terpilih untuk dibuat menjadi paket.","image":"flow1/12-pilih-checkbox-rup-65914625belanja-obat-obatan-obat-obatan-l.png"}
+{"step":13,"flow":"flow1","action":"Isi","instruction":"Isi Nama Paket Non Tender","expected":"Nama paket tampil pada draft.","image":"flow1/13-isi-nama-paket-non-tender.png"}
+{"step":14,"flow":"flow1","action":"Klik","instruction":"Klik Selanjutnya menuju Dokumen Persiapan","expected":"Step 2 draft paket terbuka.","image":"flow1/14-klik-selanjutnya-menuju-dokumen-persiapan.png"}
+{"step":15,"flow":"flow1","action":"Klik","instruction":"Klik KBKI pada item 1","expected":"Modal pemilihan KBKI terbuka.","image":"flow1/15-klik-kbki-pada-item-1.png"}
+{"step":16,"flow":"flow1","action":"Klik","instruction":"Klik Cari KBKI","expected":"Daftar kode KBKI ditampilkan.","image":"flow1/16-klik-cari-kbki.png"}
+{"step":17,"flow":"flow1","action":"Pilih","instruction":"Pilih kode KBKI untuk item 1","expected":"Kode KBKI ditandai.","image":"flow1/17-pilih-kode-kbki-untuk-item-1.png"}
+{"step":18,"flow":"flow1","action":"Klik","instruction":"Klik Simpan pada Rincian HPS","expected":"Rincian HPS dan KBKI tersimpan.","image":"flow1/18-klik-simpan-pada-rincian-hps.png"}
+{"step":19,"flow":"flow1","action":"Klik","instruction":"Klik Kirim Email kepada Kepala UKPBJ","expected":"Status email berubah menjadi Sudah dikirim.","image":"flow1/19-klik-kirim-email-kepada-kepala-ukpbj.png"}
+{"step":20,"flow":"flow1","action":"Klik","instruction":"Klik Simpan untuk membuat paket dan meneruskan ke Kepala UKPBJ","expected":"Data paket tersimpan dan manifest Flow 1 dibuat.","image":"flow1/20-klik-simpan-untuk-membuat-paket-dan-meneruskan-ke-kepala-ukp.png"}
