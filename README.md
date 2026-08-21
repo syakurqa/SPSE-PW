@@ -114,6 +114,216 @@ Format file:
 
 Pastikan login ulang tetap menuju SPSE 2. `.env` dan JSON berisi credential harus tetap lokal.
 
+## Konfigurasi data test Flow 1–6
+
+Credential dan path manifest diatur melalui `.env`, sedangkan data bisnis berada di `packages/web-automation/spse/fixtures/data`. Pisahkan keduanya: jangan menulis email atau password langsung di fixture.
+
+### Flow 1 — data paket PPK
+
+Fixture utama: `packages/web-automation/spse/fixtures/data/non-tender.data.js`.
+
+Ubah default pada parameter `createNonTenderTestData`:
+
+```js
+export function createNonTenderTestData({
+  metodeLabel = 'Penunjukan Langsung',
+  jenisPengadaanLabel = 'Pengadaan Barang',
+  satkerQuery = 'DINAS KESEHATAN',
+  rupName = null,
+  rupIndex = 1,
+} = {}) {
+```
+
+Arti field:
+
+| Field | Kegunaan |
+| --- | --- |
+| `metodeLabel` | `Penunjukan Langsung` atau `Pengadaan Langsung`. |
+| `jenisPengadaanLabel` | Contoh: `Pengadaan Barang`, `Pekerjaan Konstruksi`, atau `Jasa Lainnya`. |
+| `satkerQuery` | Teks pencarian Satuan Kerja. Gunakan nama yang muncul di UI. |
+| `rupName` | Nama RUP exact. Isi `null` bila pemilihan dilakukan berdasarkan indeks/filter. |
+| `rupIndex` | Urutan RUP, dimulai dari `1`. Dipakai jika `rupName` tidak ditentukan. |
+| `selection.tahun` | Tahun RUP yang akan dipilih. |
+
+Rincian HPS/KBKI dikonfigurasi melalui `package.kbkiItems`:
+
+```js
+kbkiItems: [{
+  jenisBarang: 'pipa',
+  satuan: 'pcs',
+  harga: '10000000',
+  keterangan: 'Data test HPS',
+  query: 'pipa',
+  selectText: 'Pipa/ slang kain',
+}]
+```
+
+- `harga` adalah nilai per item dalam digit tanpa pemisah ribuan.
+- Total HPS tidak boleh melebihi pagu RUP.
+- Untuk Pengadaan Barang biasa, isi KBKI hanya jika memang diwajibkan skenario.
+- Dokumen persiapan dan Nota Dinas PPK berasal dari `documents.preparation` dan `documents.notaDinasPpk`.
+
+Override sederhana tanpa mengubah fixture:
+
+```dotenv
+SPSE_METODE_PEMILIHAN=Penunjukan Langsung
+SPSE_JENIS_PENGADAAN=Pengadaan Barang
+```
+
+Skenario khusus Dinas Kesehatan dan HPS Rp10 miliar dikonfigurasi di fixture `nonTenderHealthConstructionData` pada `packages/web-automation/spse/fixtures/base.fixture.js`. Skenario Pejabat Pengadaan berada pada `nonTenderPPData` di file yang sama.
+
+### Flow 2 — data Kepala UKPBJ
+
+Fixture: `packages/web-automation/spse/fixtures/data/ukpbj-approval.data.js`.
+
+Data paket tidak diisi ulang. Flow 2 wajib memakai manifest Flow 1:
+
+```dotenv
+SPSE_PACKAGE_MANIFEST=/absolute/path/to/manifest-flow-1.json
+SPSE_POKJA_NAME=Cirebon Pokja Trial
+SPSE_POKJA_INDEX=1
+```
+
+- Gunakan `SPSE_POKJA_NAME` untuk memilih nama exact.
+- `SPSE_POKJA_INDEX` hanya fallback dan dimulai dari `1`.
+- File Nota Dinas ditentukan oleh `documents.assignment`. Default-nya `packages/common-module/fixtures/documents/datatest.pdf`.
+- Jika ingin memakai file lain, ubah `documentPath` di fixture ke file test yang valid dan pastikan formatnya PDF.
+- Jangan mengubah `packageId`, `packageName`, atau status langsung saat Flow 2 sedang berjalan.
+
+### Flow 3 — jadwal, kualifikasi, dan Pokja
+
+Fixture: `packages/web-automation/spse/fixtures/data/pokja-approval.data.js`.
+
+Bagian yang dapat dikonfigurasi:
+
+```js
+schedule: {
+  firstDayOffset: 1,
+  stageCount: 9,
+  startHour: 8,
+  endHour: 16,
+},
+businessQualification: 'Kecil',
+qualification: {
+  source: 'KBLI',
+  query: 'makan',
+  classification: /1075\s*-\s*Industri Makanan/i,
+  administrativeIndexes: [4],
+  technicalIndexes: [],
+  kbkiQuery: null,
+},
+offerValidityDays: 90,
+```
+
+| Field | Kegunaan |
+| --- | --- |
+| `firstDayOffset` | Hari pertama jadwal dihitung dari tanggal eksekusi. `1` berarti H+1. |
+| `stageCount` | Jumlah tahap jadwal; Penunjukan Langsung memakai sembilan tahap. |
+| `startHour` / `endHour` | Jam mulai dan selesai setiap tahap. |
+| `businessQualification` | Kualifikasi usaha yang dipilih. |
+| `administrativeIndexes` | Indeks checkbox persyaratan administrasi. |
+| `technicalIndexes` | Indeks checkbox teknis. Gunakan `[]` untuk Pengadaan Barang biasa. |
+| `kbkiQuery` | Query KBKI. Biarkan `null` jika KBKI tidak diperlukan. |
+| `offerValidityDays` | Masa berlaku penawaran dalam hari. |
+
+Konfigurasi tambahan:
+
+- `offerDocument`: indeks persyaratan dokumen penawaran.
+- `sdpNumber`: nomor SDP.
+- `invitation`: tempat, peralatan, dan peserta undangan.
+- `provider.query`: kata pencarian Penyedia; `provider.index` dimulai dari `0`.
+- `documents.sdp`, `documents.invitation`, dan `documents.minutes`: file PDF data test.
+
+Untuk Pengadaan Barang, fixture otomatis memakai persyaratan administrasi `[4]`, teknis `[]`, dan `kbkiQuery: null`. Tambahkan KBKI hanya untuk skenario khusus yang benar-benar mewajibkannya.
+
+### Flow 4 — data Penyedia
+
+Flow 4 tidak memiliki fixture bisnis terpisah. Datanya berasal dari manifest Flow 3 dan `.env`:
+
+```dotenv
+SPSE_PACKAGE_MANIFEST=/absolute/path/to/manifest-yang-sama.json
+SPSE_PROVIDER_USERNAME=<email-penyedia-yang-dipilih-flow-3>
+SPSE_PROVIDER_PASSWORD=<password-penyedia>
+```
+
+`SPSE_PROVIDER_USERNAME` harus merupakan Penyedia yang dipilih pada `provider.query`/`provider.index` di Flow 3. Jika berbeda, paket tidak akan muncul pada **Beranda → Non Tender** akun tersebut.
+
+### Flow 5 — pertanyaan dan jawaban
+
+Fixture: `packages/web-automation/spse/fixtures/data/flow5.data.js`.
+
+```js
+export const flow5Data = {
+  sessionNumber: 25,
+  explanationTime: '23-08-2026 10:00',
+  questions: [
+    {
+      document: 'Dokumen Pemilihan',
+      chapter: 'Ruang Lingkup Pekerjaan',
+      text: 'Isi pertanyaan yang relevan dengan paket.',
+      attachment: attachmentPath,
+    },
+  ],
+  answers: [
+    'Jawaban Pokja untuk pertanyaan pada indeks yang sama.',
+  ],
+};
+```
+
+- `sessionNumber` harus sama dengan sesi default yang dipilih di bagian bawah web.
+- `explanationTime` memakai format `DD-MM-YYYY HH:mm` dan harus berada pada jadwal Pemberian Penjelasan paket.
+- Setiap pertanyaan membutuhkan `document`, `chapter`, dan `text`.
+- `attachment` opsional; hapus field tersebut untuk pertanyaan tanpa lampiran.
+- Jumlah `answers` harus sama dengan jumlah `questions`; jawaban indeks `0` menjawab pertanyaan indeks `0`.
+- Gunakan teks yang relevan dengan jenis paket. Jangan memakai jawaban konstruksi untuk paket Pengadaan Barang.
+
+### Flow 6 — pilihan Data Kualifikasi
+
+Fixture: `packages/web-automation/spse/fixtures/data/flow6.data.js`.
+
+```js
+export const flow6Data = {
+  sessionNumber: 25,
+  offerTime: '24-08-2026 10:00',
+  qualification: {
+    businessPermits: 'all',
+    personnel: 'all',
+    experience: 'all',
+    ongoingWork: 'all',
+    equipment: 'all',
+    otherRequirementFile: testDocument,
+  },
+  offer: {
+    technicalFile: testDocument,
+  },
+};
+```
+
+Cara memilih data pada setiap kelompok:
+
+```js
+businessPermits: 'all', // pilih seluruh baris
+personnel: [0],         // hanya baris pertama
+experience: [0, 2],    // baris pertama dan ketiga
+ongoingWork: [],        // tidak memilih baris
+```
+
+- Indeks dimulai dari `0` dan mengikuti urutan data yang tampil pada akun Penyedia.
+- `sessionNumber` harus sama dengan sesi default aktif.
+- `offerTime` harus berada pada jadwal Upload Dokumen Penawaran.
+- `otherRequirementFile` dan `technicalFile` harus menunjuk file test yang tersedia.
+- Jalankan `flow6-inspect.spec.js` dahulu ketika struktur form atau data SIKaP/VMS berubah.
+
+### Checklist sebelum eksekusi
+
+1. Pastikan VPN aktif dan `BASE_URL` menuju SPSE 2.
+2. Pastikan RUP, Satker, metode, jenis pengadaan, pagu, dan HPS Flow 1 saling sesuai.
+3. Pastikan Pokja di Flow 2 sama dengan tiga akun Pokja pada Flow 3.
+4. Pastikan Penyedia yang dipilih Flow 3 sama dengan credential Flow 4–6.
+5. Gunakan satu `SPSE_PACKAGE_MANIFEST` yang sama untuk Flow 2–6.
+6. Perbarui tanggal `explanationTime` dan `offerTime`, lalu cocokkan sesi default dengan jadwal paket.
+7. Pastikan seluruh path dokumen menunjuk file yang ada dan berformat sesuai.
+
 ## Pola menjalankan test
 
 Mode headed direkomendasikan agar proses dapat dipantau:
