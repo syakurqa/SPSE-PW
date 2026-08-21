@@ -1,0 +1,334 @@
+import fs from 'fs';
+import path from 'path';
+import { FormPaketPage } from './form-paket.page.js';
+import { captureGuideStep } from '../../utils/guide-capture.js';
+
+export class UkpbjApprovalPage extends FormPaketPage {
+  /**
+   * @param {import('@playwright/test').Page} page
+   */
+  constructor(page) {
+    super(page);
+  }
+
+  async handleInaprocSsoIfNeeded() {
+    const page = this.getActivePage();
+    for (let i = 0; i < 15; i++) {
+      const url = page.url();
+      if (url.includes('/spse/paketnontender/') && (url.includes('edit') || url.includes('form') || url.includes('dokumen') || url.includes('tambah'))) {
+        return;
+      }
+
+      if (url.includes('accounts.inaproc.id') || url.includes('register-spa') || url.includes('/u/login')) {
+        const email = process.env.SPSE_UKPBJ_USERNAME;
+        const password = process.env.SPSE_UKPBJ_PASSWORD;
+        if (!email || !password) {
+          throw new Error('SPSE UKPBJ credentials are required through environment variables.');
+        }
+
+        const emailInput = page.locator('input[name="email"], input[name="username"], input[placeholder*="namapengguna" i], input[type="email"]').first();
+        if (await emailInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await emailInput.fill(email);
+          await emailInput.dispatchEvent('input').catch(() => null);
+          await emailInput.dispatchEvent('change').catch(() => null);
+          await page.waitForTimeout(1000);
+          const submitBtn = page.locator('#login-btn, button[type="submit"], button:has-text("Masuk"), button:has-text("Lanjut")').first();
+          await submitBtn.click({ force: true });
+          await page.waitForTimeout(2500);
+        }
+
+        const passInput = page.locator('input[name="password"], input[type="password"]').first();
+        if (await passInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await passInput.fill(password);
+          await passInput.dispatchEvent('input').catch(() => null);
+          await passInput.dispatchEvent('change').catch(() => null);
+          await page.waitForTimeout(500);
+          const passSubmit = page.locator('button[type="submit"], button:has-text("Lanjut")').first();
+          await passSubmit.click({ force: true });
+          await page.waitForTimeout(2500);
+        }
+
+        const bypassBtn = page.getByRole('button', { name: /Lanjutkan tanpa Security Key/i });
+        if (await bypassBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await bypassBtn.click({ force: true });
+          await page.waitForTimeout(2000);
+        }
+      }
+
+      if (url.includes('account.eproc.dev')) {
+        const accessLink = page.getByRole('link', { name: 'Manajemen Akses' });
+        if (await accessLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await accessLink.click();
+          await page.waitForTimeout(1000);
+        }
+
+        // 1. If modal dialog is open, click Pilih on SPSE Staging
+        const modal = page.locator('[role="dialog"]');
+        if (await modal.isVisible({ timeout: 2000 }).catch(() => false)) {
+          const spseModalBtn = modal.locator('tr').filter({ hasText: /SPSE Staging/i }).locator('button').first();
+          if (await spseModalBtn.isVisible().catch(() => false)) {
+            await spseModalBtn.click();
+            await page.waitForTimeout(1500);
+          }
+        } else {
+          const cirebonRow = page.locator('tr').filter({ hasText: /KOTA CIREBON/i }).first();
+          if (!await cirebonRow.isVisible({ timeout: 2000 }).catch(() => false)) {
+            const dropdown = page.locator('input[placeholder*="Pilih"], [role="combobox"]').first();
+            if (await dropdown.isVisible({ timeout: 3000 }).catch(() => false)) {
+              await dropdown.click();
+              await page.waitForTimeout(1000);
+              const spseModalBtn = page.locator('[role="dialog"]').locator('tr').filter({ hasText: /SPSE Staging/i }).locator('button').first();
+              if (await spseModalBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+                await spseModalBtn.click();
+                await page.waitForTimeout(1500);
+              }
+            }
+          }
+        }
+
+        // 2. Click KOTA CIREBON row or Aktif button
+        const cirebonRow = page.locator('tr').filter({ hasText: /KOTA CIREBON/i }).first();
+        if (await cirebonRow.isVisible({ timeout: 5000 }).catch(() => false)) {
+          const aktifBtn = cirebonRow.locator('button, a, span').filter({ hasText: /Aktif|Pilih|Masuk/i }).first();
+          if (await aktifBtn.isVisible().catch(() => false)) {
+            await aktifBtn.click();
+          } else {
+            await cirebonRow.click();
+          }
+          await page.waitForTimeout(3000);
+        }
+      }
+
+      const bypassKey = page.getByRole('button', { name: /Lanjutkan tanpa Security Key/i });
+      if (await bypassKey.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await bypassKey.click({ force: true });
+        await page.waitForTimeout(2000);
+      }
+
+      const roleBtn = page.locator('button[id^="login-pesona-"]').filter({ hasText: /Kepala UKPBJ/i }).or(page.locator('#login-pesona-4-btn')).first();
+      if (await roleBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+        await roleBtn.click({ force: true });
+        await page.waitForTimeout(3000);
+      }
+
+      await page.waitForTimeout(1000);
+    }
+  }
+
+  async openPackage(manifest) {
+    const nonTenderLink = this.page.getByRole('link', {
+      name: 'Non Tender',
+      exact: true
+    });
+    await nonTenderLink.waitFor({
+      state: 'visible',
+      timeout: 30000
+    });
+    await captureGuideStep(this.page, {
+      instruction: 'Klik menu Non Tender pada akun Kepala UKPBJ',
+      target: nonTenderLink,
+      expected: 'Daftar paket yang perlu diverifikasi ditampilkan.'
+    });
+    await nonTenderLink.click();
+    await this.page.waitForTimeout(1500);
+
+    const packageLinkById = this.page.locator(
+      `a[href*="/paketnontender/${manifest.packageId}"]`
+    ).filter({ hasText: manifest.packageName }).first();
+    const exactPackageLink = this.page.getByRole('link', {
+      name: manifest.packageName,
+      exact: true
+    });
+    const packageLink = exactPackageLink.or(packageLinkById).first();
+    await packageLink.waitFor({
+      state: 'visible',
+      timeout: 30000
+    });
+
+    const actualName = (await packageLink.textContent())
+      ?.replace(/\s+/g, ' ').trim();
+    if (!actualName?.includes(manifest.packageName)) {
+      throw new Error(
+        `Nama paket tidak sama dengan manifest. Aktual: "${actualName}".`
+      );
+    }
+    await captureGuideStep(this.page, {
+      instruction: `Klik paket exact ${manifest.packageName}`,
+      target: packageLink,
+      expected: 'Detail paket Flow 1 terbuka.'
+    });
+    await packageLink.click();
+    await this.page.waitForTimeout(2000);
+
+    // Re-auth if intercepted by Pomerium/INAPROC
+    await this.handleInaprocSsoIfNeeded();
+
+    const form = this.page.locator('#formTambahPaket, #formPaket, #main');
+    await form.first().waitFor({
+      state: 'visible',
+      timeout: 30000
+    });
+  }
+
+  async reviewAndMarkComplete() {
+    const page = this.getActivePage();
+    const nextButton = () => page.locator(
+      'button:has-text("Selanjutnya"), a:has-text("Selanjutnya"), input[value*="Selanjutnya" i]'
+    ).first();
+
+    if (await nextButton().isVisible({ timeout: 3000 }).catch(() => false)) {
+      await nextButton().click();
+      await page.waitForTimeout(1500);
+    }
+    const statusSelect = page.locator(
+      '#statusPersetujuan, select[name*="status" i]'
+    ).first();
+    if (await statusSelect.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await statusSelect.selectOption({ label: /Lengkap|Setuju/i });
+    }
+
+    const checkAll = page.locator(
+      'input[type="checkbox"]#checkAll, input[type="checkbox"][name*="all" i]'
+    ).first();
+    if (await checkAll.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await checkAll.check();
+    }
+
+    const checkboxes = page.locator('input[type="checkbox"]:not([disabled])');
+    const count = await checkboxes.count();
+    for (let index = 0; index < count; index++) {
+      await checkboxes.nth(index).check().catch(() => null);
+    }
+
+    const saveReviewBtn = page.locator(
+      'button:has-text("Simpan"), input[value*="Simpan" i]'
+    ).first();
+    if (await saveReviewBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await saveReviewBtn.click();
+      await page.waitForLoadState('domcontentloaded').catch(() => null);
+    }
+
+    const completeButton = page.getByRole('button', { name: /Lengkap/, }).first();
+    if (await completeButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await completeButton.click();
+      const confirmButton = page.getByRole('button', {
+        name: 'OK',
+        exact: true,
+      });
+      if (await confirmButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await confirmButton.click();
+      }
+      await page.waitForTimeout(1500);
+    }
+
+    if (await nextButton().isVisible({ timeout: 3000 }).catch(() => false)) {
+      await nextButton().click();
+      await page.waitForTimeout(1500);
+    }
+
+    const step3Controls = page.locator(
+      '#pokjaId, select[name*="pokja" i], select[id*="pokja" i], input[type="file"]'
+    );
+    if (await step3Controls.count() === 0) {
+      const packageId = page.url().match(/paketnontender\/([^/?]+)/)?.[1];
+      if (!packageId) {
+        throw new Error(`ID paket Flow 2 tidak ditemukan: ${page.url()}`);
+      }
+      await page.goto(new URL(
+        `/spse/paketnontender/${packageId}/edit?step=3`,
+        page.url()
+      ).href, { waitUntil: 'domcontentloaded' });
+    }
+  }
+
+  async selectPokjaAndUpload({ pokja, documentPath }) {
+    const page = this.getActivePage();
+    const choosePokjaButton = page.getByRole('button', { name: /Pilih Pokja Pemilihan/, }).or(page.getByRole('link', { name: /Pilih Pokja Pemilihan/, })).first();
+    if (await choosePokjaButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await choosePokjaButton.click();
+      await page.waitForTimeout(1000);
+      const rows = page.locator('table tbody tr').filter({
+        has: page.getByRole('link', {
+          name: 'Pilih',
+          exact: true
+        }),
+      });
+      const targetRow = pokja?.name
+        ? rows.filter({ hasText: pokja.name }).first()
+        : rows.nth(Math.max(0, Number(pokja?.index || 1) - 1));
+      await targetRow.getByRole('link', {
+        name: 'Pilih',
+        exact: true,
+      }).click();
+      await page.waitForTimeout(1000);
+    }
+    const pokjaSelect = page.locator(
+      '#pokjaId, select[name*="pokja" i], select[id*="pokja" i]'
+    ).first();
+    if (await pokjaSelect.isVisible({ timeout: 10000 }).catch(() => false)) {
+      if (pokja?.name) {
+        await pokjaSelect.selectOption({ label: new RegExp(pokja.name, 'i') }).catch(() => null);
+      } else {
+        await pokjaSelect.selectOption({ index: 1 }).catch(() => null);
+      }
+    }
+
+    if (documentPath && fs.existsSync(documentPath)) {
+      const uploadRow = page.locator('#fileuploadPokja').locator('xpath=ancestor::tr[1]');
+      const fileInput = page.locator('#fileuploadPokja');
+      if (await fileInput.count() > 0) {
+        await fileInput.setInputFiles(documentPath);
+        await fileInput.dispatchEvent('change');
+        const uploadedFile = page.locator('#files').getByText(path.basename(documentPath), { exact: false, });
+        const uploaded = await uploadedFile.waitFor({
+          state: 'visible',
+          timeout: 10000
+        }).then(() => true).catch(() => false);
+        if (!uploaded) {
+          const uploadHtml = await uploadRow.evaluate(
+            (element) => element.outerHTML
+          );
+          const uploadScripts = await page.locator('script').evaluateAll(
+            (scripts) => scripts.map((script) => ({
+              src: script.src,
+              text: script.textContent,
+            })).filter((script) => /fileuploadPokja|uploadPokja|KUPPBJ/i.test(
+              `${script.src} ${script.text}`
+            ))
+          );
+          throw new Error(`Upload Nota Dinas belum tersimpan. HTML kontrol: ${uploadHtml}; Script: ${JSON.stringify(uploadScripts)}`);
+        }
+      }
+    }
+  }
+
+  async sendNotificationAndSave() {
+    const page = this.getActivePage();
+    const sendEmailCheckbox = page.locator(
+      'input[type="checkbox"][name*="email" i], input[type="checkbox"]#kirimEmail'
+    ).first();
+    if (await sendEmailCheckbox.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await sendEmailCheckbox.check().catch(() => null);
+    }
+
+    const simpanBtn = page.locator(
+      '#simpan, button:has-text("Simpan"), input[value*="Simpan" i], button:has-text("Kirim Email")'
+    ).first();
+    await simpanBtn.waitFor({
+      state: 'visible',
+      timeout: 15000
+    });
+    await simpanBtn.waitFor({
+      state: 'attached',
+      timeout: 15000
+    });
+    await simpanBtn.isEnabled({ timeout: 30000 });
+    await simpanBtn.click();
+    const confirmButton = page.getByRole('button', { name: /^(OK|Ya|Kirim)$/, }).first();
+    if (await confirmButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await confirmButton.click();
+    }
+    await page.waitForLoadState('domcontentloaded').catch(() => null);
+    await page.waitForTimeout(2000);
+  }
+}

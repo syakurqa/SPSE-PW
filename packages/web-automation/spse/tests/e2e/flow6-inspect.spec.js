@@ -1,0 +1,76 @@
+import fs from 'fs';
+import { test, expect } from '@playwright/test';
+import { env } from '../../../../common-module/config/index.js';
+import { ProviderLoginPage } from '../../pom/auth/provider-login.page.js';
+import { ProviderPackagePage } from '../../pom/paket/provider-package.page.js';
+import { TrainingSessionPage } from '../../pom/training/training-session.page.js';
+
+function compact(value) {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+async function describePage(page, label) {
+  // Diagnostic output is intentionally printed for Flow 6 form analysis.
+  // eslint-disable-next-line no-console
+  console.log(`${label}_URL`, page.url());
+  // eslint-disable-next-line no-console
+  console.log(`${label}_TEXT`, compact(await page.locator('#main').innerText()));
+  // eslint-disable-next-line no-console
+  console.log(`${label}_CONTROLS`, JSON.stringify(await page.locator(
+    'a,button,input,textarea,select,option'
+  ).evaluateAll((nodes) => nodes.map((node) => ({
+    tag: node.tagName,
+    text: (node.innerText || node.value || '').replace(/\s+/g, ' ').trim(),
+    href: node.getAttribute('href'),
+    id: node.id,
+    name: node.getAttribute('name'),
+    type: node.getAttribute('type'),
+    checked: node.checked,
+    disabled: node.disabled,
+  })).filter((item) => item.text || item.href || item.id || item.name))));
+}
+
+test('inspeksi seluruh form Flow 6 tanpa mengirim penawaran', { tag: ['@QA-T1', '@feature:flow6', '@e2e'], }, async ({ page }) => {
+  test.setTimeout(600000);
+  const manifest = JSON.parse(fs.readFileSync(
+    process.env.SPSE_PACKAGE_MANIFEST,
+    'utf8'
+  ));
+  expect([
+    'FLOW5_EXPLANATION_COMPLETED',
+    'FLOW6_QUALIFICATION_SENT',
+  ]).toContain(manifest.status);
+
+  const login = new ProviderLoginPage(page);
+  const activePage = await login.login({
+    username: process.env.SPSE_PROVIDER_USERNAME,
+    password: process.env.SPSE_PROVIDER_PASSWORD,
+  }, env.SPSE_PLATFORM.BASE_URL);
+  const session = new TrainingSessionPage(activePage);
+  await session.activateAndSetTime(25, '24-08-2026 10:00');
+  const packages = new ProviderPackagePage(activePage);
+  await packages.openNonTenderPackage(manifest);
+  await expect(activePage.locator('#main')).toContainText(
+    'Upload Dokumen Penawaran'
+  );
+  await describePage(activePage, 'FLOW6_MAIN');
+
+  const candidateLinks = await activePage.locator('#main a').evaluateAll(
+    (links) => links.map((link) => ({
+      text: (link.innerText || '').replace(/\s+/g, ' ').trim(),
+      href: link.getAttribute('href'),
+    })).filter(({ text, href }) => href
+      && /Kualifikasi|Penawaran|Kirim Data/i.test(text))
+  );
+  for (let index = 0; index < candidateLinks.length; index++) {
+    const candidate = candidateLinks[index];
+    const detailPage = await activePage.context().newPage();
+    await detailPage.goto(new URL(candidate.href, activePage.url()).href, { waitUntil: 'domcontentloaded', });
+    await describePage(detailPage, `FLOW6_DETAIL_${index + 1}`);
+    await detailPage.screenshot({
+      path: `/tmp/flow6-detail-${index + 1}.png`,
+      fullPage: true,
+    });
+    await detailPage.close();
+  }
+});
