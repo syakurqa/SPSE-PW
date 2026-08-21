@@ -29,24 +29,25 @@ test('Flow 6 mengirim semua Data Kualifikasi Penyedia', { tag: ['@QA-T1', '@feat
     flow6Data.offerTime
   );
   const packages = new ProviderPackagePage(activePage);
-  await packages.openNonTenderPackage(manifest);
+  await packages.openAcceptedNonTenderPackageFromHome(manifest);
 
   const offerPage = new ProviderOfferPage(activePage);
   await offerPage.openQualificationFromPackage();
-  const selections = await offerPage.fillAndSendQualification(
+  const qualificationResult = await offerPage.fillAndSendQualification(
     flow6Data.qualification
   );
-  updatePackageManifest(manifestPath, {
-    status: 'FLOW6_QUALIFICATION_SENT',
-    flow6QualificationSelections: selections,
-    flow6QualificationSentAt: new Date().toISOString(),
-  });
 
   await activePage.goto(new URL(
     `/spse/nontender/${manifest.procurementPackageId}`,
     activePage.url()
   ).href, { waitUntil: 'domcontentloaded' });
-  await expect(activePage.locator('#main')).toContainText(
-    /Dokumen Kualifikasi\s+Status:\s*(?!Belum dikirim)/
-  );
+  const qualificationStatus = await offerPage.assertQualificationSent();
+
+  updatePackageManifest(manifestPath, {
+    status: 'FLOW6_QUALIFICATION_SENT',
+    flow6QualificationSelections: qualificationResult.selections,
+    flow6QualificationUpload: qualificationResult.upload,
+    flow6QualificationStatus: qualificationStatus,
+    flow6QualificationSentAt: new Date().toISOString(),
+  });
 });

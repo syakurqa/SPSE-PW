@@ -89,39 +89,6 @@ export class PokjaApprovalPage {
     await this.selectProvider(data.provider);
   }
 
-  async openPackageApproval(manifest) {
-    await this.page.getByRole('link', {
-      name: 'DAFTAR PAKET',
-      exact: true
-    }).click();
-    await this.page.getByRole('link', {
-      name: 'Non Tender',
-      exact: true
-    }).click();
-    const packageRow = this.page.locator('table tbody tr')
-      .filter({ hasText: manifest.packageName })
-      .or(this.page.locator('table tbody tr').filter({ hasText: manifest.packageId })).first();
-    await packageRow.waitFor({
-      state: 'visible',
-      timeout: 30000
-    });
-    const packageId = this.activePackageId || manifest.packageId;
-    await packageRow.locator(
-      `a[href="/spse/nontender/${packageId}"]`
-    ).click();
-    await this.page.waitForLoadState('domcontentloaded').catch(() => null);
-    await this.page.locator('#main').waitFor({
-      state: 'visible',
-      timeout: 30000
-    });
-    const mainText = (await this.page.locator('#main').textContent()) || '';
-    if (!mainText.includes(manifest.packageName)) {
-      throw new Error(
-        `Halaman persetujuan paket "${manifest.packageName}" tidak terbuka.`
-      );
-    }
-  }
-
   async configureBusinessQualification(label) {
     const qualificationSelect = this.page.locator(
       '#main tr:has-text("Kualifikasi Usaha") select'
@@ -300,6 +267,7 @@ export class PokjaApprovalPage {
     });
     await qualificationLink.click();
     if (await this.isQualificationConfigured(qualification)) {
+      await this.completeOpenKbkiDialog();
       await this.clickSave();
       await this.page.waitForTimeout(1000);
       await this.clickBack();
@@ -322,61 +290,9 @@ export class PokjaApprovalPage {
       'syaratTeknis',
       qualification.technicalIndexes
     );
-    const kbkiTableText = (await this.page.getByText(
-      'Tabel Data KBKI',
-      { exact: true }
-    ).locator('xpath=following::table[1]').textContent().catch(() => '')) || '';
-    if (qualification.kbkiQuery
-      && qualification.technicalIndexes.length > 0
-      && !/\d{4,}/.test(kbkiTableText)) {
-      const addKbkiButton = this.page.getByText(
-        'Tabel Data KBKI',
-        { exact: true }
-      ).locator(
-        'xpath=following::*[(self::a or self::button) and contains(normalize-space(.), "Tambah")][1]'
-      );
-      await addKbkiButton.click();
-      const kbkiDialog = this.page.locator(
-        '.modal-dialog, [role="dialog"]'
-      ).filter({ hasText: 'Daftar KBKI' }).last();
-      await kbkiDialog.waitFor({
-        state: 'visible',
-        timeout: 15000
-      });
-      const descriptionSelect = kbkiDialog.locator(
-        '.select2-selection'
-      ).first();
-      await descriptionSelect.click();
-      const kbkiSearch = this.page.locator(
-        '.select2-container--open input.select2-search__field'
-      ).last();
-      await kbkiSearch.fill(qualification.kbkiQuery || 'pipa');
-      const kbkiOption = this.page.locator(
-        '.select2-results__option'
-      ).filter({ hasNotText: /No results|Mencari|Searching/i }).first();
-      await kbkiOption.waitFor({
-        state: 'visible',
-        timeout: 30000
-      });
-      await kbkiOption.click();
-      const kbkiRow = kbkiDialog.locator('tbody tr')
-        .filter({ hasNotText: /Tidak ada data/i }).first();
-      await kbkiRow.waitFor({
-        state: 'visible',
-        timeout: 30000
-      });
-      const rowSelection = kbkiRow.locator(
-        'input[type="radio"], input[type="checkbox"]'
-      ).first();
-      if (await rowSelection.isVisible().catch(() => false)) {
-        await rowSelection.check({ force: true });
-      } else {
-        await kbkiRow.click();
-      }
-      await kbkiDialog.getByRole('button', {
-        name: 'Tambah',
-        exact: true,
-      }).click();
+    if (qualification.kbkiQuery && !await this.hasConfiguredKbki()) {
+      await this.openKbkiDialog();
+      await this.completeOpenKbkiDialog();
       if (process.env.SPSE_DEBUG_FLOW3 === 'true') {
         await this.page.screenshot({
           path: '/tmp/flow3-kbki-modal.png',
@@ -384,8 +300,20 @@ export class PokjaApprovalPage {
         });
       }
     }
+    await this.completeOpenKbkiDialog();
     await this.clickSave();
     await this.page.waitForTimeout(2000);
+    if (!await this.isQualificationConfigured(qualification)) {
+      const kbkiTableTextAfterSave = (await this.page.getByText(
+        'Tabel Data KBKI',
+        { exact: true }
+      ).locator('xpath=following::table[1]').textContent().catch(() => '')) || '';
+      throw new Error(
+        'Persyaratan Kualifikasi belum lengkap setelah Simpan. '
+        + `Isi tabel KBKI: "${kbkiTableTextAfterSave.replace(/\s+/g, ' ').trim()}". `
+        + `Baris hasil terakhir: ${this.lastKbkiRowHtml || '(tidak terekam)'}`
+      );
+    }
     if (process.env.SPSE_DEBUG_FLOW3 === 'true') {
       await this.page.screenshot({
         path: '/tmp/flow3-qualification-after-save.png',
@@ -393,6 +321,188 @@ export class PokjaApprovalPage {
       });
     }
     await this.clickBack();
+  }
+
+  async openKbkiDialog() {
+    const addKbkiButton = this.page.locator('#tambahKbki');
+    const kbkiDialog = this.page.locator('#kbkiModal');
+    await addKbkiButton.waitFor({
+      state: 'visible',
+      timeout: 15000,
+    });
+
+    // Exercise the same UI action as a user first. The current SPSE page can
+    // render Bootstrap's data attributes without activating its delegated
+    // modal handler, so use the loaded modal API only when that click is inert.
+    await addKbkiButton.click();
+    if (await kbkiDialog.isVisible({ timeout: 3000 }).catch(() => false)) {
+      return;
+    }
+
+    const fallback = await this.page.evaluate(() => {
+      const modal = document.querySelector('#kbkiModal');
+      const button = document.querySelector('#tambahKbki');
+      const jquery = globalThis.jQuery || globalThis.$;
+      const bootstrap = globalThis.bootstrap;
+      let strategy = 'none';
+      let error = null;
+
+      try {
+        if (modal && jquery?.fn?.modal) {
+          jquery(modal).modal('show');
+          strategy = 'jquery-modal';
+        } else if (modal && bootstrap?.Modal) {
+          bootstrap.Modal.getOrCreateInstance(modal).show();
+          strategy = 'bootstrap-modal';
+        }
+      } catch (cause) {
+        error = cause instanceof Error ? cause.message : String(cause);
+      }
+
+      return {
+        strategy,
+        error,
+        button: button?.outerHTML || null,
+        modalExists: Boolean(modal),
+        modalClass: modal?.className || null,
+        modalStyle: modal?.getAttribute('style') || null,
+        modalAriaHidden: modal?.getAttribute('aria-hidden') || null,
+        jqueryModalAvailable: Boolean(jquery?.fn?.modal),
+        bootstrapModalAvailable: Boolean(bootstrap?.Modal),
+      };
+    });
+
+    const openedByFallback = await kbkiDialog.waitFor({
+      state: 'visible',
+      timeout: 10000,
+    }).then(() => true).catch(() => false);
+    if (!openedByFallback) {
+      throw new Error(
+        'Modal Daftar KBKI tidak terbuka setelah klik #tambahKbki dan fallback API modal. '
+        + `Diagnostik: ${JSON.stringify(fallback)}`
+      );
+    }
+  }
+
+  async completeOpenKbkiDialog() {
+    const kbkiDialog = this.page.locator('#kbkiModal');
+    if (!await kbkiDialog.isVisible().catch(() => false)) {
+      return false;
+    }
+
+    const bootstrapSelect = kbkiDialog.locator('.bootstrap-select')
+      .filter({ hasText: /Pilih Deskripsi|Deskripsi/i }).first();
+    if (await bootstrapSelect.isVisible().catch(() => false)) {
+      const descriptionToggle = bootstrapSelect.locator(
+        'button.dropdown-toggle'
+      ).first();
+      await descriptionToggle.click();
+
+      const liveSearch = bootstrapSelect.locator(
+        '.bs-searchbox input'
+      ).first();
+      await liveSearch.waitFor({
+        state: 'visible',
+        timeout: 15000,
+      });
+      await liveSearch.fill('');
+      await liveSearch.pressSequentially('b', { delay: 150 });
+
+      // bootstrap-select may append its menu directly to <body>, so the
+      // results cannot reliably be scoped below #kbkiModal/.bootstrap-select.
+      const descriptionOption = this.page.locator(
+        '.dropdown-menu.show li:not(.disabled):not(.hidden) a[role="option"], '
+        + '.dropdown-menu.show li:not(.disabled):not(.hidden) a, '
+        + '.dropdown-menu.show .dropdown-item:not(.disabled)'
+      ).filter({ hasNotText: /Pilih Deskripsi|No results|Tidak ada hasil|Mencari|Searching/i, }).first();
+      const visibleOptionFound = await descriptionOption.waitFor({
+        state: 'visible',
+        timeout: 30000,
+      }).then(() => true).catch(() => false);
+      if (visibleOptionFound) {
+        await descriptionOption.click();
+      } else {
+        const nativeSelect = bootstrapSelect.locator('select').first();
+        const nativeOptions = await nativeSelect.locator('option').evaluateAll(
+          (options) => options.map((option) => ({
+            value: option.value,
+            text: option.textContent?.replace(/\s+/g, ' ').trim() || '',
+          }))
+        );
+        const nativeChoice = nativeOptions.find((option) => (
+          option.value
+          && !/Pilih Deskripsi|Tidak ada hasil|No results/i.test(option.text)
+        ));
+        if (nativeChoice) {
+          await nativeSelect.selectOption(
+            { value: nativeChoice.value },
+            { force: true }
+          );
+          await nativeSelect.dispatchEvent('change');
+        } else {
+          const openDropdownHtml = await this.page.locator(
+            '.dropdown-menu.show'
+          ).evaluateAll((menus) => menus.map(
+            (menu) => menu.outerHTML.slice(0, 3000)
+          ));
+          throw new Error(
+            'Pilihan Deskripsi KBKI tidak muncul setelah mengetik "b". '
+            + `Native options (${nativeOptions.length}): ${JSON.stringify(nativeOptions)}. `
+            + `Dropdown terbuka: ${JSON.stringify(openDropdownHtml)}`
+          );
+        }
+      }
+    } else {
+      const descriptionSelect = kbkiDialog.locator(
+        '.select2-selection'
+      ).first();
+      await descriptionSelect.click();
+      const select2Search = this.page.locator(
+        '.select2-container--open input.select2-search__field'
+      ).last();
+      await select2Search.fill('b');
+      const descriptionOption = this.page.locator(
+        '.select2-results__option[role="option"], .select2-results__option'
+      ).filter({ hasNotText: /Pilih Deskripsi|No results|Tidak ada|Mencari|Searching/i, }).first();
+      await descriptionOption.waitFor({
+        state: 'visible',
+        timeout: 30000,
+      });
+      await descriptionOption.click();
+    }
+
+    const searchKbkiButton = kbkiDialog.getByRole('button', {
+      name: 'Cari KBKI',
+      exact: true,
+    });
+    await searchKbkiButton.click();
+
+    const kbkiRow = kbkiDialog.locator('tbody tr')
+      .filter({ hasNotText: /Tidak ada data|No data available/i }).first();
+    await kbkiRow.waitFor({
+      state: 'visible',
+      timeout: 30000
+    });
+    this.lastKbkiRowHtml = await kbkiRow.evaluate(
+      (element) => element.outerHTML
+    );
+    const rowSelection = kbkiRow.locator(
+      'input[type="radio"], input[type="checkbox"]'
+    ).first();
+    if (await rowSelection.isVisible().catch(() => false)) {
+      await rowSelection.check({ force: true });
+    } else {
+      await kbkiRow.click();
+    }
+    await kbkiDialog.getByRole('button', {
+      name: 'Tambah',
+      exact: true,
+    }).click();
+    await kbkiDialog.waitFor({
+      state: 'hidden',
+      timeout: 30000
+    });
+    return true;
   }
 
   async isQualificationConfigured(qualification) {
@@ -419,7 +529,32 @@ export class PokjaApprovalPage {
         return false;
       }
     }
+    if (qualification.kbkiQuery && !await this.hasConfiguredKbki()) {
+      return false;
+    }
     return true;
+  }
+
+  async hasConfiguredKbki() {
+    const kbkiTable = this.page.getByText(
+      'Tabel Data KBKI',
+      { exact: true }
+    ).locator('xpath=following::table[1]');
+    const rows = kbkiTable.locator('tbody tr');
+    const rowCount = await rows.count().catch(() => 0);
+    for (let index = 0; index < rowCount; index++) {
+      const row = rows.nth(index);
+      if (!await row.isVisible().catch(() => false)) {
+        continue;
+      }
+      const text = ((await row.textContent().catch(() => '')) || '')
+        .replace(/\s+/g, ' ').trim();
+      const cellCount = await row.locator('td').count().catch(() => 0);
+      if (cellCount > 0 && text && !/Tidak ada data/i.test(text)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async configureOfferValidity(days) {
@@ -674,34 +809,12 @@ export class PokjaApprovalPage {
 
   async approveIntegrityPact() {
     const agreementForm = this.page.locator('#form-persetujuan');
-    if (!await agreementForm.isVisible({ timeout: 5000 }).catch(() => false)) {
-      const profileText = (await this.page.locator(
-        'a[href*="access-management"]'
-      ).first().textContent())?.replace(/\s+/g, ' ').trim();
-      const memberName = profileText?.split(/\s+-\s+POKJA/i)[0]?.trim();
-      const memberAction = memberName
-        ? this.page.locator('#main a, #main button')
-          .filter({ hasText: memberName }).last()
-        : null;
-
-      if (memberAction
-        && await memberAction.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await captureGuideStep(this.page, {
-          instruction: `Klik nama anggota Pokja ${memberName}`,
-          target: memberAction,
-          expected: 'Form Pakta Integritas anggota Pokja ditampilkan.'
-        });
-        await memberAction.click();
-        await agreementForm.waitFor({
-          state: 'visible',
-          timeout: 15000
-        }).catch(() => null);
-      }
-
-      if (!await agreementForm.isVisible().catch(() => false)) {
-        await this.verifyCurrentMemberAlreadyApproved();
-        return;
-      }
+    if (!await agreementForm.isVisible({ timeout: 15000 }).catch(() => false)) {
+      // The member-name links on the edit page open approval history; they do
+      // not open the Pakta Integritas form. A missing form therefore means the
+      // current member has either approved already or package setup is invalid.
+      await this.verifyCurrentMemberAlreadyApproved();
+      return;
     }
     await this.page.getByRole('heading', { name: /PAKTA INTEGRITAS/i }).waitFor({
       state: 'visible',

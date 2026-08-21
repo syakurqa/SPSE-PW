@@ -274,46 +274,61 @@ export class UkpbjApprovalPage extends FormPaketPage {
     }
 
     if (documentPath && fs.existsSync(documentPath)) {
-      const uploadRow = page.locator('#fileuploadPokja').locator('xpath=ancestor::tr[1]');
-      const fileInput = page.locator('#fileuploadPokja');
-      if (await fileInput.count() > 0) {
-        await fileInput.setInputFiles(documentPath);
-        await fileInput.dispatchEvent('change');
-        const uploadedFile = page.locator('#files').getByText(path.basename(documentPath), { exact: false, });
-        const uploaded = await uploadedFile.waitFor({
-          state: 'visible',
-          timeout: 10000
-        }).then(() => true).catch(() => false);
-        if (!uploaded) {
-          const uploadHtml = await uploadRow.evaluate(
-            (element) => element.outerHTML
-          );
-          const uploadScripts = await page.locator('script').evaluateAll(
-            (scripts) => scripts.map((script) => ({
-              src: script.src,
-              text: script.textContent,
-            })).filter((script) => /fileuploadPokja|uploadPokja|KUPPBJ/i.test(
-              `${script.src} ${script.text}`
-            ))
-          );
-          throw new Error(`Upload Nota Dinas belum tersimpan. HTML kontrol: ${uploadHtml}; Script: ${JSON.stringify(uploadScripts)}`);
-        }
+      const packageId = page.url().match(/paketnontender\/([^/?]+)/)?.[1];
+      if (!packageId) {
+        throw new Error(`ID paket Flow 2 tidak ditemukan: ${page.url()}`);
       }
+      const uploadedFile = page.locator('#files').getByText(
+        path.basename(documentPath),
+        { exact: false }
+      );
+      if (!await uploadedFile.isVisible().catch(() => false)) {
+        await this.uploadSignedFile({
+          page,
+          packageId,
+          absPath: documentPath,
+          saveUrl: `${new URL(page.url()).origin}/spse/paketnontender/${packageId}/uploadAttachment`,
+          extraForm: { step: 3 },
+        });
+        await page.reload({ waitUntil: 'domcontentloaded' });
+      }
+      await page.locator('#files').getByText(
+        path.basename(documentPath),
+        { exact: false }
+      ).waitFor({
+        state: 'visible',
+        timeout: 30000
+      });
     }
   }
 
   async sendNotificationAndSave() {
     const page = this.getActivePage();
-    const sendEmailCheckbox = page.locator(
-      'input[type="checkbox"][name*="email" i], input[type="checkbox"]#kirimEmail'
+    const emailAlreadySent = page.getByText(
+      /Sudah dikirim/i,
+      { exact: false }
     ).first();
-    if (await sendEmailCheckbox.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await sendEmailCheckbox.check().catch(() => null);
+    if (!await emailAlreadySent.isVisible().catch(() => false)) {
+      const sendEmailButton = page.locator(
+        '#kirimEmailPokja:visible, button:visible'
+      ).filter({ hasText: /Kirim Email/i }).first();
+      await sendEmailButton.waitFor({
+        state: 'visible',
+        timeout: 30000
+      });
+      await sendEmailButton.click();
+      const sendConfirmation = page.getByRole('button', { name: /^(OK|Ya|Kirim)$/, }).first();
+      if (await sendConfirmation.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await sendConfirmation.click();
+      }
+      await page.waitForLoadState('domcontentloaded').catch(() => null);
+      await page.getByText(/Sudah dikirim/i, { exact: false }).first().waitFor({
+        state: 'visible',
+        timeout: 30000
+      });
     }
 
-    const simpanBtn = page.locator(
-      '#simpan, button:has-text("Simpan"), input[value*="Simpan" i], button:has-text("Kirim Email")'
-    ).first();
+    const simpanBtn = page.getByRole('button', { name: /Simpan$/, }).first();
     await simpanBtn.waitFor({
       state: 'visible',
       timeout: 15000
@@ -324,11 +339,17 @@ export class UkpbjApprovalPage extends FormPaketPage {
     });
     await simpanBtn.isEnabled({ timeout: 30000 });
     await simpanBtn.click();
-    const confirmButton = page.getByRole('button', { name: /^(OK|Ya|Kirim)$/, }).first();
+    const confirmButton = page.getByRole('button', { name: /^(OK|Ya|Simpan)$/, }).first();
     if (await confirmButton.isVisible({ timeout: 3000 }).catch(() => false)) {
       await confirmButton.click();
     }
     await page.waitForLoadState('domcontentloaded').catch(() => null);
-    await page.waitForTimeout(2000);
+    await page.getByText(
+      'Data paket telah tersimpan',
+      { exact: true }
+    ).waitFor({
+      state: 'visible',
+      timeout: 30000
+    });
   }
 }

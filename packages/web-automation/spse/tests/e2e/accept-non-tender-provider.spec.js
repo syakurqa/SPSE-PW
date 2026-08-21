@@ -30,7 +30,7 @@ test.describe('Flow 4 penerimaan paket Non-Tender oleh Penyedia', () => {
     );
     const packagePage = new ProviderPackagePage(activePage);
     if (manifest.status === 'POKJA_APPROVED') {
-      await packagePage.openNonTenderPackage(manifest);
+      await packagePage.openAvailableNonTenderPackage(manifest);
       await packagePage.acceptPackage();
     }
     await packagePage.verifyPackageOnHome(manifest);

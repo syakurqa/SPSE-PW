@@ -6,16 +6,36 @@ export class ProviderPackagePage {
   }
 
   async openNonTenderPackage(manifest) {
-    const packageMenu = this.page.getByRole('link', {
+    return this.openAvailableNonTenderPackage(manifest);
+  }
+
+  async openAvailableNonTenderPackage(manifest) {
+    const packageMenu = this.page.getByRole('link', { name: /DAFTAR PAKET|PAKET BARU/i, }).first();
+    await captureGuideStep(this.page, {
+      instruction: 'Klik DAFTAR PAKET atau PAKET BARU',
+      target: packageMenu,
+      expected: 'Daftar paket yang tersedia bagi Penyedia terbuka.',
+    });
+    await this.openNonTenderList(packageMenu);
+    await this.openPackageFromCurrentList(manifest, { expected: 'Detail dan Pakta Integritas paket ditampilkan.', });
+  }
+
+  async openAcceptedNonTenderPackageFromHome(manifest) {
+    const homeMenu = this.page.getByRole('link', {
       name: 'BERANDA',
       exact: true,
     }).first();
     await captureGuideStep(this.page, {
-      instruction: 'Klik Beranda',
-      target: packageMenu,
+      instruction: 'Klik BERANDA untuk membuka paket yang telah diikuti',
+      target: homeMenu,
       expected: 'Beranda dan daftar paket yang diikuti Penyedia terbuka.',
     });
-    await packageMenu.click();
+    await this.openNonTenderList(homeMenu);
+    await this.openPackageFromCurrentList(manifest, { expected: 'Detail paket yang telah diikuti Penyedia ditampilkan.', });
+  }
+
+  async openNonTenderList(menuLink) {
+    await menuLink.click();
     await this.page.waitForLoadState('domcontentloaded').catch(() => null);
 
     const nonTenderTab = this.page.getByRole('link', {
@@ -28,7 +48,10 @@ export class ProviderPackagePage {
       expected: 'Tabel paket Non Tender ditampilkan.',
     });
     await nonTenderTab.click();
+    await this.page.waitForLoadState('domcontentloaded').catch(() => null);
+  }
 
+  async openPackageFromCurrentList(manifest, { expected }) {
     const search = this.page.locator(
       'input[type="search"], input[placeholder*="Cari" i]'
     ).first();
@@ -50,9 +73,10 @@ export class ProviderPackagePage {
     await captureGuideStep(this.page, {
       instruction: `Buka paket ${manifest.packageName}`,
       target: packageLink,
-      expected: 'Detail dan Pakta Integritas paket ditampilkan.',
+      expected,
     });
     await packageLink.click();
+    await this.page.waitForLoadState('domcontentloaded').catch(() => null);
   }
 
   async findPackageRowAcrossPages(manifest) {
@@ -77,7 +101,7 @@ export class ProviderPackagePage {
       await this.page.waitForTimeout(1000);
     }
     throw new Error(
-      `Paket ${manifest.packageName} tidak ditemukan pada Beranda Penyedia.`
+      `Paket ${manifest.packageName} tidak ditemukan pada daftar Non Tender Penyedia.`
     );
   }
 

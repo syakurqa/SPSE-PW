@@ -23,6 +23,11 @@ test.describe('Flow 5 Pemberian Penjelasan Penunjukan Langsung', () => {
       'FLOW5_PROVIDER_QUESTIONS_SENT',
       'FLOW5_EXPLANATION_COMPLETED',
     ]).toContain(manifest.status);
+    expect(manifest.jenisPengadaan).toBe('Pengadaan Barang');
+    const attachmentQuestions = flow5Data.questions.filter(
+      (question) => question.attachment
+    );
+    expect(attachmentQuestions).toHaveLength(2);
 
     const loginPage = new ProviderLoginPage(page);
     const activePage = await loginPage.login({
@@ -35,23 +40,33 @@ test.describe('Flow 5 Pemberian Penjelasan Penunjukan Langsung', () => {
       flow5Data.explanationTime
     );
     const packagePage = new ProviderPackagePage(activePage);
-    await packagePage.openNonTenderPackage(manifest);
+    await packagePage.openAcceptedNonTenderPackageFromHome(manifest);
     const explanationPage = new ExplanationPage(activePage);
     await explanationPage.openFromPackage();
 
-    const completed = Number(manifest.flow5ProviderQuestionCount || 0);
-    for (let index = completed; index < flow5Data.questions.length; index++) {
-      await explanationPage.sendQuestion(flow5Data.questions[index], index + 1);
+    let counters = await explanationPage.readCounters();
+    expect(counters.questions).toBeLessThanOrEqual(flow5Data.questions.length);
+    await explanationPage.verifyStoredQuestions(
+      flow5Data.questions.slice(0, counters.questions)
+    );
+    for (let index = counters.questions;
+      index < flow5Data.questions.length;
+      index++) {
+      counters = await explanationPage.sendQuestion(
+        flow5Data.questions[index],
+        index + 1
+      );
       updatePackageManifest(manifestPath, {
         status: 'ACCEPTED_BY_PROVIDER',
-        flow5ProviderQuestionCount: index + 1,
+        flow5ProviderQuestionCount: counters.questions,
       });
     }
     await activePage.reload({ waitUntil: 'domcontentloaded' });
-    const counters = await explanationPage.readCounters();
+    counters = await explanationPage.readCounters();
     expect(counters.questions).toBe(flow5Data.questions.length);
+    await explanationPage.verifyStoredQuestions(flow5Data.questions);
     const providerDownloads = await explanationPage
-      .verifyAttachmentDownloads(2, 'Penyedia');
+      .verifyAttachmentDownloads(attachmentQuestions, 'Penyedia');
     updatePackageManifest(manifestPath, {
       status: manifest.status === 'FLOW5_EXPLANATION_COMPLETED'
         ? manifest.status
@@ -71,6 +86,11 @@ test.describe('Flow 5 Pemberian Penjelasan Penunjukan Langsung', () => {
       'FLOW5_PROVIDER_QUESTIONS_SENT',
       'FLOW5_EXPLANATION_COMPLETED',
     ]).toContain(manifest.status);
+    expect(manifest.jenisPengadaan).toBe('Pengadaan Barang');
+    const attachmentQuestions = flow5Data.questions.filter(
+      (question) => question.attachment
+    );
+    expect(attachmentQuestions).toHaveLength(2);
 
     const loginPage = new PokjaLoginPage(page);
     const activePage = await loginPage.login({
@@ -93,14 +113,27 @@ test.describe('Flow 5 Pemberian Penjelasan Penunjukan Langsung', () => {
     await explanationPage.openFromPackage();
     let counters = await explanationPage.readCounters();
     expect(counters.questions).toBe(flow5Data.questions.length);
+    expect(counters.explanations).toBeLessThanOrEqual(
+      flow5Data.answers.length
+    );
+    await explanationPage.verifyStoredQuestions(flow5Data.questions);
+    await explanationPage.verifyStoredAnswers(
+      flow5Data.questions,
+      flow5Data.answers,
+      counters.explanations
+    );
 
     for (let index = counters.explanations;
       index < flow5Data.answers.length;
       index++) {
-      await explanationPage.sendNextAnswer(flow5Data.answers[index], index + 1);
+      counters = await explanationPage.sendAnswer(
+        flow5Data.questions[index],
+        flow5Data.answers[index],
+        index + 1
+      );
       updatePackageManifest(manifestPath, {
         status: 'FLOW5_PROVIDER_QUESTIONS_SENT',
-        flow5PokjaAnswerCount: index + 1,
+        flow5PokjaAnswerCount: counters.explanations,
       });
     }
     await activePage.reload({ waitUntil: 'domcontentloaded' });
@@ -109,8 +142,13 @@ test.describe('Flow 5 Pemberian Penjelasan Penunjukan Langsung', () => {
       questions: flow5Data.questions.length,
       explanations: flow5Data.answers.length,
     });
+    await explanationPage.verifyStoredAnswers(
+      flow5Data.questions,
+      flow5Data.answers,
+      counters.explanations
+    );
     const pokjaDownloads = await explanationPage
-      .verifyAttachmentDownloads(2, 'Pokja');
+      .verifyAttachmentDownloads(attachmentQuestions, 'Pokja');
     updatePackageManifest(manifestPath, {
       status: 'FLOW5_EXPLANATION_COMPLETED',
       flow5ProviderQuestionCount: counters.questions,

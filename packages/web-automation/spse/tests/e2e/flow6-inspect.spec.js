@@ -39,6 +39,8 @@ test('inspeksi seluruh form Flow 6 tanpa mengirim penawaran', { tag: ['@QA-T1', 
   expect([
     'FLOW5_EXPLANATION_COMPLETED',
     'FLOW6_QUALIFICATION_SENT',
+    'FLOW6_OFFER_LETTER_SENT',
+    'FLOW6_TECHNICAL_SENT',
   ]).toContain(manifest.status);
 
   const login = new ProviderLoginPage(page);
@@ -49,7 +51,7 @@ test('inspeksi seluruh form Flow 6 tanpa mengirim penawaran', { tag: ['@QA-T1', 
   const session = new TrainingSessionPage(activePage);
   await session.activateAndSetTime(25, '24-08-2026 10:00');
   const packages = new ProviderPackagePage(activePage);
-  await packages.openNonTenderPackage(manifest);
+  await packages.openAcceptedNonTenderPackageFromHome(manifest);
   await expect(activePage.locator('#main')).toContainText(
     'Upload Dokumen Penawaran'
   );
@@ -60,17 +62,47 @@ test('inspeksi seluruh form Flow 6 tanpa mengirim penawaran', { tag: ['@QA-T1', 
       text: (link.innerText || '').replace(/\s+/g, ' ').trim(),
       href: link.getAttribute('href'),
     })).filter(({ text, href }) => href
-      && /Kualifikasi|Penawaran|Kirim Data/i.test(text))
+      && /Kualifikasi|Penawaran|Kirim Data/i.test(text)
+      && !/getexcell(?:template|dkh)|\/dlsec\/|download/i.test(href))
   );
-  for (let index = 0; index < candidateLinks.length; index++) {
-    const candidate = candidateLinks[index];
+  const queue = candidateLinks.map((candidate) => ({
+    ...candidate,
+    href: new URL(candidate.href, activePage.url()).href,
+  }));
+  const visited = new Set();
+  let detailNumber = 0;
+  while (queue.length > 0 && detailNumber < 12) {
+    const candidate = queue.shift();
+    if (visited.has(candidate.href)) {
+      continue;
+    }
+    visited.add(candidate.href);
+    detailNumber++;
     const detailPage = await activePage.context().newPage();
-    await detailPage.goto(new URL(candidate.href, activePage.url()).href, { waitUntil: 'domcontentloaded', });
-    await describePage(detailPage, `FLOW6_DETAIL_${index + 1}`);
+    await detailPage.goto(candidate.href, { waitUntil: 'domcontentloaded', });
+    await describePage(detailPage, `FLOW6_DETAIL_${detailNumber}`);
     await detailPage.screenshot({
-      path: `/tmp/flow6-detail-${index + 1}.png`,
+      path: `/tmp/flow6-detail-${detailNumber}.png`,
       fullPage: true,
     });
+    const nestedLinks = await detailPage.locator('#main a').evaluateAll(
+      (links) => links.map((link) => ({
+        text: (link.innerText || '').replace(/\s+/g, ' ').trim(),
+        href: link.getAttribute('href'),
+      })).filter(({ text, href }) => href
+        && /Penawaran|Teknis|Harga|Tanda Terima|Bukti/i.test(text)
+        && !/getexcell(?:template|dkh)|\/dlsec\/|download/i.test(href))
+    );
+    for (const nestedLink of nestedLinks) {
+      const nestedUrl = new URL(nestedLink.href, detailPage.url());
+      if (nestedUrl.origin === new URL(activePage.url()).origin
+        && !visited.has(nestedUrl.href)) {
+        queue.push({
+          text: nestedLink.text,
+          href: nestedUrl.href,
+        });
+      }
+    }
     await detailPage.close();
   }
 });

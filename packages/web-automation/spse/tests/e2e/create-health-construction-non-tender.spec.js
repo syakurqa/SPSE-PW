@@ -44,6 +44,7 @@ test.describe('Flow 1 Dinas Kesehatan Pengadaan Barang Penunjukan Langsung', () 
       rupMethod: selectedRup.metodeLabel,
       rupPagu: selectedRup.pagu,
       hps: 10_000_000_000,
+      requiresKbki: true,
       assignedRole: submission.assignedRole,
       status: submission.status,
       createdAt: new Date().toISOString(),

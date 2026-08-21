@@ -21,5 +21,15 @@ export const flow6Data = {
     equipment: 'all',
     otherRequirementFile: testDocument,
   },
-  offer: { technicalFile: testDocument, },
+  offer: {
+    validityDays: 90,
+    technicalFile: testDocument,
+    // Setiap elemen dipakai berurutan untuk persyaratan lampiran harga.
+    // Gunakan null pada indeks tertentu jika lampiran tersebut tidak ingin diunggah.
+    priceRequirementFiles: [testDocument, testDocument],
+    // DPP Rp9 miliar + PPN 11% = Rp9,99 miliar, masih <= HPS Rp10 miliar.
+    priceBeforeVat: 9000000000,
+    vatPercent: 11,
+    tkdnPercent: 20,
+  },
 };

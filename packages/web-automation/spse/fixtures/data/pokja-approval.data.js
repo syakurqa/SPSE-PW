@@ -67,6 +67,7 @@ export function loadPokjaApprovalData({ manifestPath } = {}) {
     throw new Error(`Dokumen data test tidak ditemukan: ${documentPath}`);
   }
   const isGoods = manifest.jenisPengadaan === 'Pengadaan Barang';
+  const requiresKbki = manifest.requiresKbki === true;
 
   return {
     manifest,
@@ -88,7 +89,7 @@ export function loadPokjaApprovalData({ manifestPath } = {}) {
       // pengalaman/KBKI. Skenario khusus dapat mengisi kedua nilai ini
       // secara eksplisit bila dokumen pemilihannya memang mensyaratkan KBKI.
       technicalIndexes: isGoods ? [] : [0, 1, 2, 3, 4],
-      kbkiQuery: null,
+      kbkiQuery: requiresKbki ? 'b' : null,
     },
     offerValidityDays: 90,
     offerDocument: {

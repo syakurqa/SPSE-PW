@@ -1,5 +1,6 @@
 import { captureGuideStep } from '../../utils/guide-capture.js';
 import fs from 'fs';
+import path from 'path';
 
 export class ExplanationPage {
   constructor(page) {
@@ -7,7 +8,7 @@ export class ExplanationPage {
   }
 
   async openFromPackage() {
-    const explanationLink = this.page.getByRole('link', { name: /Pertanyaan\s+\d+\s+dan Penjelasan\s+\d+/, });
+    const explanationLink = this.page.getByRole('link', { name: /Pertanyaan\s+\d+\s+dan Penjelasan\s+\d+/, }).first();
     await captureGuideStep(this.page, {
       instruction: 'Buka tab Pertanyaan dan Penjelasan',
       target: explanationLink,
@@ -23,10 +24,17 @@ export class ExplanationPage {
   }
 
   async sendQuestion(question, number) {
+    const countersBefore = await this.readCounters();
+    if (countersBefore.questions !== number - 1) {
+      throw new Error(
+        `Pertanyaan ${number} tidak aman dikirim: counter aktual `
+        + `${countersBefore.questions}, seharusnya ${number - 1}.`
+      );
+    }
     const sendLink = this.page.getByRole('link', {
       name: 'Kirim Pertanyaan',
       exact: true,
-    });
+    }).first();
     await captureGuideStep(this.page, {
       instruction: `Klik Kirim Pertanyaan untuk pertanyaan ${number}`,
       target: sendLink,
@@ -43,14 +51,24 @@ export class ExplanationPage {
     await dialog.locator('#bab').fill(question.chapter);
     await dialog.locator('#uraian').fill(question.text, { force: true });
     if (question.attachment) {
-      await dialog.locator('input[type="file"]#file').setInputFiles(
-        question.attachment
+      if (!fs.existsSync(question.attachment)
+        || fs.statSync(question.attachment).size <= 0) {
+        throw new Error(
+          `Lampiran pertanyaan ${number} tidak ditemukan atau kosong: `
+          + question.attachment
+        );
+      }
+      const fileInput = dialog.locator('input[type="file"]#file');
+      await fileInput.setInputFiles(question.attachment);
+      const selectedName = await fileInput.evaluate(
+        (element) => element.files?.[0]?.name || ''
       );
-      await dialog.locator('#path1').waitFor({
-        state: 'attached',
-        timeout: 30000,
-      });
-      await this.page.waitForTimeout(1500);
+      if (selectedName !== path.basename(question.attachment)) {
+        throw new Error(
+          `File pertanyaan ${number} tidak terpasang pada input upload.`
+        );
+      }
+      await this.waitForUploadReady(dialog, question.attachment, number);
     }
     const sendButton = dialog.locator('#kirimButton');
     await captureGuideStep(this.page, {
@@ -62,6 +80,78 @@ export class ExplanationPage {
     await dialog.waitFor({
       state: 'hidden',
       timeout: 30000
+    });
+    return this.waitForQuestionStored(question, number);
+  }
+
+  async waitForUploadReady(dialog, attachmentPath, number) {
+    const fileName = path.basename(attachmentPath);
+    const uploadStateHandle = await this.page.waitForFunction(
+      ({ expectedFileName }) => {
+        const isVisible = (element) => {
+          const style = window.getComputedStyle(element);
+          return style.display !== 'none'
+            && style.visibility !== 'hidden'
+            && element.getClientRects().length > 0;
+        };
+        const dialogs = Array.from(document.querySelectorAll(
+          '.modal.show, [role="dialog"]'
+        )).filter(isVisible);
+        const activeDialog = dialogs.at(-1);
+        if (!activeDialog) {
+          return null;
+        }
+
+        const errorText = Array.from(activeDialog.querySelectorAll(
+          '.alert-danger, .text-danger, .invalid-feedback'
+        )).filter(isVisible).map((element) => element.textContent || '')
+          .join(' ').replace(/\s+/g, ' ').trim();
+        if (errorText) {
+          return {
+            state: 'error',
+            detail: errorText,
+          };
+        }
+
+        const uploadMarkers = Array.from(activeDialog.querySelectorAll(
+          'input[type="hidden"], #path1, #fileId, #fileId1'
+        )).filter((element) => /path|file.?id/i.test(
+          `${element.id} ${element.getAttribute('name') || ''}`
+        ));
+        const marker = uploadMarkers.map((element) => (
+          element.value
+          || element.getAttribute('value')
+          || element.textContent
+          || ''
+        ).trim()).find((value) => value
+          && !/^(?:0|null|undefined)$/i.test(value));
+        const successText = Array.from(activeDialog.querySelectorAll(
+          '.alert-success, .text-success'
+        )).filter(isVisible).map((element) => element.textContent || '')
+          .join(' ').replace(/\s+/g, ' ').trim();
+        if (marker || (successText
+          && new RegExp(`berhasil|selesai|${expectedFileName}`, 'i')
+            .test(successText))) {
+          return {
+            state: 'ready',
+            detail: marker || successText,
+          };
+        }
+        return null;
+      },
+      { expectedFileName: fileName },
+      { timeout: 45000 }
+    );
+    const uploadState = await uploadStateHandle.jsonValue();
+    if (uploadState?.state !== 'ready') {
+      throw new Error(
+        `Upload lampiran pertanyaan ${number} gagal: `
+        + (uploadState?.detail || 'status upload tidak dikenali')
+      );
+    }
+    await dialog.locator('#kirimButton').waitFor({
+      state: 'visible',
+      timeout: 15000,
     });
   }
 
@@ -80,8 +170,50 @@ export class ExplanationPage {
     };
   }
 
-  async sendNextAnswer(answer, number) {
-    const answerLink = this.page.getByRole('link', {
+  getQuestionPanel(question) {
+    // Pertanyaan dan jawaban dirender sebagai dua <li> bersaudara di dalam
+    // satu list. Scope ke parent list agar aksi Jawab/Download tetap spesifik
+    // pada pertanyaan, sekaligus jawaban yang baru tersimpan dapat divalidasi.
+    return this.page.locator('li:visible').filter({ hasText: question.text, }).first()
+      .locator('xpath=parent::*');
+  }
+
+  async waitForQuestionStored(question, expectedQuestionCount) {
+    const panel = this.getQuestionPanel(question);
+    await panel.waitFor({
+      state: 'visible',
+      timeout: 30000,
+    });
+    if (question.attachment) {
+      await panel.locator('a[href^="/spse/dl/"]').first().waitFor({
+        state: 'visible',
+        timeout: 30000,
+      });
+    }
+    await this.waitForCounter({ questions: expectedQuestionCount, });
+    return this.readCounters();
+  }
+
+  async verifyStoredQuestions(questions) {
+    for (const question of questions) {
+      await this.waitForQuestionStored(question, questions.length);
+    }
+  }
+
+  async sendAnswer(question, answer, number) {
+    const countersBefore = await this.readCounters();
+    if (countersBefore.explanations !== number - 1) {
+      throw new Error(
+        `Penjelasan ${number} tidak aman dikirim: counter aktual `
+        + `${countersBefore.explanations}, seharusnya ${number - 1}.`
+      );
+    }
+    const questionPanel = this.getQuestionPanel(question);
+    await questionPanel.waitFor({
+      state: 'visible',
+      timeout: 30000,
+    });
+    const answerLink = questionPanel.getByRole('link', {
       name: 'Jawab',
       exact: true,
     }).first();
@@ -96,7 +228,11 @@ export class ExplanationPage {
     });
     await answerLink.click();
 
-    const answerForm = this.page.locator('form').filter({ has: this.page.locator('textarea[name="penjelasan.dsl_uraian"]'), }).filter({ has: this.page.locator('button#save') }).first();
+    const answerForm = questionPanel.locator('form').filter({
+      has: this.page.locator(
+        'textarea[name="penjelasan.dsl_uraian"]'
+      ),
+    }).filter({ has: this.page.locator('button#save'), }).first();
     const answerInput = answerForm.locator(
       'textarea[name="penjelasan.dsl_uraian"]'
     );
@@ -116,25 +252,66 @@ export class ExplanationPage {
       state: 'detached',
       timeout: 30000
     });
-  }
-
-  async verifyAttachmentDownloads(expectedCount, roleLabel) {
-    const attachmentLinks = this.page.locator('a[href^="/spse/dl/"]');
-    await attachmentLinks.nth(expectedCount - 1).waitFor({
+    await questionPanel.getByText(answer, { exact: true }).waitFor({
       state: 'visible',
       timeout: 30000,
-    }).catch(() => null);
-    const availableCount = await attachmentLinks.count();
-    if (availableCount < expectedCount) {
-      throw new Error(
-        `${roleLabel} hanya menemukan ${availableCount} lampiran; `
-        + `diharapkan minimal ${expectedCount}.`
-      );
-    }
+    });
+    await this.waitForCounter({
+      questions: countersBefore.questions,
+      explanations: number,
+    });
+    return this.readCounters();
+  }
 
+  async verifyStoredAnswers(questions, answers, answeredCount) {
+    for (let index = 0; index < answeredCount; index++) {
+      const panel = this.getQuestionPanel(questions[index]);
+      await panel.getByText(answers[index], { exact: true }).waitFor({
+        state: 'visible',
+        timeout: 30000,
+      });
+    }
+  }
+
+  async waitForCounter({ questions, explanations }) {
+    await this.page.waitForFunction(
+      ({ expectedQuestions, expectedExplanations }) => {
+        const links = Array.from(document.querySelectorAll('a'));
+        return links.some((link) => {
+          const match = (link.textContent || '').replace(/\s+/g, ' ').match(
+            /Pertanyaan\s+(\d+)\s+dan\s*Penjelasan\s+(\d+)/i
+          );
+          if (!match || Number(match[1]) !== expectedQuestions) {
+            return false;
+          }
+          return expectedExplanations === null
+            || Number(match[2]) === expectedExplanations;
+        });
+      },
+      {
+        expectedQuestions: questions,
+        expectedExplanations: explanations ?? null,
+      },
+      { timeout: 30000 }
+    );
+  }
+
+  async verifyAttachmentDownloads(questions, roleLabel) {
     const downloads = [];
-    for (let index = 0; index < expectedCount; index++) {
-      const attachmentLink = attachmentLinks.nth(index);
+    for (let index = 0; index < questions.length; index++) {
+      const question = questions[index];
+      const questionPanel = this.getQuestionPanel(question);
+      await questionPanel.waitFor({
+        state: 'visible',
+        timeout: 30000,
+      });
+      const attachmentLink = questionPanel.locator(
+        'a[href^="/spse/dl/"]'
+      ).first();
+      await attachmentLink.waitFor({
+        state: 'visible',
+        timeout: 30000,
+      });
       await captureGuideStep(this.page, {
         instruction: `${roleLabel} mengunduh lampiran ${index + 1}`,
         action: 'Download',
@@ -164,6 +341,8 @@ export class ExplanationPage {
         );
       }
       downloads.push({
+        document: question.document,
+        chapter: question.chapter,
         fileName: download.suggestedFilename(),
         size,
       });
