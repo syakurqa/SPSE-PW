@@ -1,5 +1,11 @@
 # Panduan Visual Menjalankan Flow 1–6 SPSE
 
+## Versi PDF
+
+Versi PDF siap cetak yang memuat penjelasan tiap flow dan 178 screenshot unik tersedia di [`SPSE-Flow-1-6-Visual-Guide.pdf`](../../output/pdf/SPSE-Flow-1-6-Visual-Guide.pdf). PDF ini dibuat dari audit JSONL dan gambar pada folder ini; setiap halaman langkah mencantumkan aksi, hasil yang diharapkan, penjelasan, dan screenshot dengan marker oranye.
+
+Versi lengkap yang mencakup Flow 1-11, 251 screenshot unik, dan catatan blocker Flow 12 tersedia di [`SPSE-Flow-1-11-Lengkap-Visual.pdf`](../../output/pdf/SPSE-Flow-1-11-Lengkap-Visual.pdf). Builder PDF dapat dijalankan ulang dengan `python3 packages/web-automation/docs/build_complete_flow_pdf.py` menggunakan Python runtime yang memiliki `reportlab` dan `Pillow`.
+
 Dokumen ini dibuat dari satu eksekusi headed berurutan pada staging SPSE 2. Setiap screenshot menampilkan titik tindakan yang ditandai oleh capture guide. Arahkan perhatian ke marker/lingkaran oranye pada gambar, kemudian ikuti instruksi **Klik**, **Isi**, **Pilih**, **Unggah**, atau **Download**.
 
 ## Paket yang digunakan

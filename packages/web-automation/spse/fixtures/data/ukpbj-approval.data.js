@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readPackageManifest } from '../../utils/package-manifest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,9 +27,10 @@ export function loadUkpbjApprovalData({
       `Manifest Flow 1 tidak ditemukan: ${resolvedManifestPath}`
     );
   }
-  const manifest = JSON.parse(
-    fs.readFileSync(resolvedManifestPath, 'utf8')
-  );
+  const manifest = readPackageManifest(resolvedManifestPath, {
+    allowedStatuses: ['SENT_TO_UKPBJ'],
+    requiredFields: ['packageUrl'],
+  });
   const expectedValues = {
     packageType: 'Non-Tender',
     metodePemilihan: 'Penunjukan Langsung',
@@ -41,11 +43,6 @@ export function loadUkpbjApprovalData({
         `Manifest tidak dapat dipakai Flow 2. ${field} diharapkan "${expected}", aktual "${manifest[field]}".`
       );
     }
-  }
-  if (!manifest.packageId || !manifest.packageName || !manifest.packageUrl) {
-    throw new Error(
-      'Manifest Flow 1 wajib memiliki packageId, packageName, dan packageUrl.'
-    );
   }
   if (!fs.existsSync(documentPath)) {
     throw new Error(`Dokumen penugasan Pokja tidak ditemukan: ${documentPath}`);

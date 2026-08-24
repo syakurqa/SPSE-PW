@@ -5,16 +5,25 @@ test.describe('Flow 1 Dinas Kesehatan Pengadaan Barang Penunjukan Langsung', () 
   test('PPK membuat paket barang dari RUP di atas Rp10 miliar dengan HPS Rp10 miliar', { tag: ['@QA-T1', '@feature:health-goods', '@e2e'], }, async ({
     spseBaseUrl,
     userPPK,
-    nonTenderHealthConstructionData: data,
+    healthGoodsDirectAppointmentData: data,
     loginPage,
     nonTenderPage,
     formPaketPage,
   }, testInfo) => {
     test.setTimeout(300000);
-    await loginPage.login(userPPK.username, userPPK.password, spseBaseUrl);
+    await loginPage.login(
+      userPPK.username,
+      userPPK.password,
+      spseBaseUrl,
+      { organization: data.selection.satkerQuery }
+    );
     await nonTenderPage.navigateToBuatPaket(
       userPPK.username,
-      userPPK.password
+      userPPK.password,
+      {
+        baseUrl: spseBaseUrl,
+        organization: data.selection.satkerQuery,
+      }
     );
     await nonTenderPage.selectSatkerAndMetode(data.selection);
     const selectedRup = await nonTenderPage.selectRencanaAndCreatePaket({ ...data.selection, });
@@ -43,8 +52,11 @@ test.describe('Flow 1 Dinas Kesehatan Pengadaan Barang Penunjukan Langsung', () 
       rupName: selectedRup.nama,
       rupMethod: selectedRup.metodeLabel,
       rupPagu: selectedRup.pagu,
-      hps: 10_000_000_000,
-      requiresKbki: true,
+      hps: data.package.kbkiItems.reduce(
+        (total, item) => total + Number(item.harga),
+        0
+      ),
+      requiresKbki: data.package.requiresKbki,
       assignedRole: submission.assignedRole,
       status: submission.status,
       createdAt: new Date().toISOString(),

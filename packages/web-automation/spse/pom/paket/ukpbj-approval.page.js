@@ -11,6 +11,34 @@ export class UkpbjApprovalPage extends FormPaketPage {
     super(page);
   }
 
+  async selectOptionMatching(select, pattern, label) {
+    const match = await select.locator('option').evaluateAll(
+      (options, source) => {
+        const expression = new RegExp(source, 'i');
+        const option = options.find((candidate) => expression.test(
+          (candidate.textContent || '').trim()
+        ));
+        return option ? {
+          value: option.value,
+          text: (option.textContent || '').trim(),
+        } : null;
+      },
+      pattern.source
+    );
+    if (!match) {
+      throw new Error(`Pilihan ${label} tidak tersedia.`);
+    }
+    await select.selectOption(match.value);
+    const selected = (await select.locator('option:checked').textContent())
+      ?.trim();
+    if (selected !== match.text) {
+      throw new Error(
+        `${label} gagal dipilih. Diharapkan "${match.text}", aktual "${selected}".`
+      );
+    }
+    return match;
+  }
+
   async handleInaprocSsoIfNeeded() {
     const page = this.getActivePage();
     for (let i = 0; i < 15; i++) {
@@ -172,19 +200,24 @@ export class UkpbjApprovalPage extends FormPaketPage {
 
   async reviewAndMarkComplete() {
     const page = this.getActivePage();
+    const form = page.locator('#formTambahPaket, #formPaket, #main').first();
     const nextButton = () => page.locator(
       'button:has-text("Selanjutnya"), a:has-text("Selanjutnya"), input[value*="Selanjutnya" i]'
     ).first();
 
     if (await nextButton().isVisible({ timeout: 3000 }).catch(() => false)) {
       await nextButton().click();
-      await page.waitForTimeout(1500);
+      await page.waitForLoadState('domcontentloaded').catch(() => null);
     }
     const statusSelect = page.locator(
       '#statusPersetujuan, select[name*="status" i]'
     ).first();
     if (await statusSelect.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await statusSelect.selectOption({ label: /Lengkap|Setuju/i });
+      await this.selectOptionMatching(
+        statusSelect,
+        /Lengkap|Setuju/i,
+        'status review lengkap'
+      );
     }
 
     const checkAll = page.locator(
@@ -194,10 +227,18 @@ export class UkpbjApprovalPage extends FormPaketPage {
       await checkAll.check();
     }
 
-    const checkboxes = page.locator('input[type="checkbox"]:not([disabled])');
+    const checkboxes = form.locator(
+      'input[type="checkbox"]:not([disabled])'
+    );
     const count = await checkboxes.count();
     for (let index = 0; index < count; index++) {
-      await checkboxes.nth(index).check().catch(() => null);
+      const checkbox = checkboxes.nth(index);
+      if (!await checkbox.isChecked()) {
+        await checkbox.check();
+      }
+      if (!await checkbox.isChecked()) {
+        throw new Error(`Checklist review ke-${index + 1} gagal dipilih.`);
+      }
     }
 
     const saveReviewBtn = page.locator(
@@ -218,12 +259,12 @@ export class UkpbjApprovalPage extends FormPaketPage {
       if (await confirmButton.isVisible({ timeout: 3000 }).catch(() => false)) {
         await confirmButton.click();
       }
-      await page.waitForTimeout(1500);
+      await page.waitForLoadState('domcontentloaded').catch(() => null);
     }
 
     if (await nextButton().isVisible({ timeout: 3000 }).catch(() => false)) {
       await nextButton().click();
-      await page.waitForTimeout(1500);
+      await page.waitForLoadState('domcontentloaded').catch(() => null);
     }
 
     const step3Controls = page.locator(
@@ -243,10 +284,10 @@ export class UkpbjApprovalPage extends FormPaketPage {
 
   async selectPokjaAndUpload({ pokja, documentPath }) {
     const page = this.getActivePage();
+    let pokjaSelected = false;
     const choosePokjaButton = page.getByRole('button', { name: /Pilih Pokja Pemilihan/, }).or(page.getByRole('link', { name: /Pilih Pokja Pemilihan/, })).first();
     if (await choosePokjaButton.isVisible({ timeout: 5000 }).catch(() => false)) {
       await choosePokjaButton.click();
-      await page.waitForTimeout(1000);
       const rows = page.locator('table tbody tr').filter({
         has: page.getByRole('link', {
           name: 'Pilih',
@@ -256,24 +297,49 @@ export class UkpbjApprovalPage extends FormPaketPage {
       const targetRow = pokja?.name
         ? rows.filter({ hasText: pokja.name }).first()
         : rows.nth(Math.max(0, Number(pokja?.index || 1) - 1));
+      await targetRow.waitFor({
+        state: 'visible',
+        timeout: 15000
+      });
       await targetRow.getByRole('link', {
         name: 'Pilih',
         exact: true,
       }).click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded').catch(() => null);
+      pokjaSelected = true;
     }
     const pokjaSelect = page.locator(
       '#pokjaId, select[name*="pokja" i], select[id*="pokja" i]'
     ).first();
     if (await pokjaSelect.isVisible({ timeout: 10000 }).catch(() => false)) {
       if (pokja?.name) {
-        await pokjaSelect.selectOption({ label: new RegExp(pokja.name, 'i') }).catch(() => null);
+        await this.selectOptionMatching(
+          pokjaSelect,
+          new RegExp(pokja.name, 'i'),
+          `Pokja ${pokja.name}`
+        );
       } else {
-        await pokjaSelect.selectOption({ index: 1 }).catch(() => null);
+        const options = pokjaSelect.locator('option:not([value=""])');
+        const optionCount = await options.count();
+        const index = Math.max(0, Number(pokja?.index || 1) - 1);
+        if (index >= optionCount) {
+          throw new Error(
+            `Urutan Pokja ${index + 1} tidak tersedia; jumlah ${optionCount}.`
+          );
+        }
+        const value = await options.nth(index).getAttribute('value');
+        await pokjaSelect.selectOption(value);
       }
+      pokjaSelected = true;
     }
 
-    if (documentPath && fs.existsSync(documentPath)) {
+    if (!pokjaSelected) {
+      throw new Error('Kontrol pemilihan Pokja tidak ditemukan atau belum tersimpan.');
+    }
+    if (!documentPath || !fs.existsSync(documentPath)) {
+      throw new Error(`Dokumen penugasan Pokja tidak ditemukan: ${documentPath}`);
+    }
+    {
       const packageId = page.url().match(/paketnontender\/([^/?]+)/)?.[1];
       if (!packageId) {
         throw new Error(`ID paket Flow 2 tidak ditemukan: ${page.url()}`);
@@ -337,7 +403,9 @@ export class UkpbjApprovalPage extends FormPaketPage {
       state: 'attached',
       timeout: 15000
     });
-    await simpanBtn.isEnabled({ timeout: 30000 });
+    if (!await simpanBtn.isEnabled({ timeout: 30000 })) {
+      throw new Error('Tombol Simpan Flow 2 masih disabled.');
+    }
     await simpanBtn.click();
     const confirmButton = page.getByRole('button', { name: /^(OK|Ya|Simpan)$/, }).first();
     if (await confirmButton.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -351,5 +419,41 @@ export class UkpbjApprovalPage extends FormPaketPage {
       state: 'visible',
       timeout: 30000
     });
+  }
+
+  async verifyForwardedPackage({
+    manifest, pokja, documentPath
+  }) {
+    const page = this.getActivePage();
+    await page.goto(new URL(
+      `/spse/paketnontender/${manifest.packageId}/edit?step=3`,
+      page.url()
+    ).href, { waitUntil: 'domcontentloaded' });
+
+    const main = page.locator('#main, #formTambahPaket').first();
+    await main.waitFor({
+      state: 'visible',
+      timeout: 30000
+    });
+    const mainText = (await main.innerText()).replace(/\s+/g, ' ');
+    if (!/Sudah dikirim/i.test(mainText)) {
+      throw new Error('Status email ke Pokja belum persisten setelah reload.');
+    }
+    const fileName = path.basename(documentPath);
+    if (!mainText.includes(fileName)) {
+      throw new Error(
+        `Dokumen penugasan ${fileName} tidak ditemukan setelah reload.`
+      );
+    }
+    if (pokja?.name && !mainText.includes(pokja.name)) {
+      throw new Error(
+        `Pokja "${pokja.name}" tidak ditemukan setelah reload.`
+      );
+    }
+    return {
+      emailStatus: 'SENT',
+      document: fileName,
+      pokja: pokja?.name || `urutan ${pokja?.index || 1}`,
+    };
   }
 }

@@ -7,7 +7,10 @@ import { TenderPage } from '../pom/paket/tender.page.js';
 import { FormPaketPage } from '../pom/paket/form-paket.page.js';
 import { FormTenderPage } from '../pom/paket/form-tender.page.js';
 import { UkpbjApprovalPage } from '../pom/paket/ukpbj-approval.page.js';
-import { createNonTenderTestData } from './data/non-tender.data.js';
+import {
+  createHealthGoodsDirectAppointmentData,
+  createNonTenderTestData,
+} from './data/non-tender.data.js';
 import { createTenderTestData } from './data/tender.data.js';
 import { loadUkpbjApprovalData } from './data/ukpbj-approval.data.js';
 import { loadPokjaApprovalData } from './data/pokja-approval.data.js';
@@ -72,27 +75,17 @@ export const test = base.extend({
     }));
   },
 
-  // Varian Flow 1/2: Dinas Kesehatan, Pengadaan Barang, Penunjukan Langsung,
-  // dengan RUP bernilai di atas Rp10 miliar dan HPS tepat Rp10 miliar.
+  // Skenario utama Flow 1-6. Seluruh nilai bisnis berada pada factory data,
+  // sehingga QA tidak perlu memutasi object fixture setelah dibuat.
   // eslint-disable-next-line no-empty-pattern
-  nonTenderHealthConstructionData: async ({}, use) => {
-    const data = createNonTenderTestData({
-      satkerQuery: 'DINAS KESEHATAN',
-      metodeLabel: 'Penunjukan Langsung',
-      jenisPengadaanLabel: 'Pengadaan Barang',
-      rupName: null,
-      rupIndex: 1,
-    });
-    data.selection.minimumPagu = 10_000_000_000;
-    data.package.kbkiItems = [{
-      jenisBarang: 'Pipa',
-      satuan: 'paket',
-      harga: '10000000000',
-      keterangan: 'Nilai HPS pengadaan barang Rp10 miliar',
-      query: 'pipa',
-      selectText: 'Pipa/ slang kain',
-    }];
-    await use(data);
+  healthGoodsDirectAppointmentData: async ({}, use) => {
+    await use(createHealthGoodsDirectAppointmentData());
+  },
+
+  // Alias sementara agar command/spec lama tidak langsung rusak. Gunakan
+  // healthGoodsDirectAppointmentData untuk code baru.
+  nonTenderHealthConstructionData: async ({ healthGoodsDirectAppointmentData, }, use) => {
+    await use(healthGoodsDirectAppointmentData);
   },
 
   // eslint-disable-next-line no-empty-pattern

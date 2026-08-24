@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readPackageManifest } from '../../utils/package-manifest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,9 +45,7 @@ export function loadPokjaApprovalData({ manifestPath } = {}) {
     throw new Error(`Manifest paket tidak ditemukan: ${resolvedManifestPath}`);
   }
 
-  const manifest = JSON.parse(
-    fs.readFileSync(resolvedManifestPath, 'utf8')
-  );
+  const manifest = readPackageManifest(resolvedManifestPath, { allowedStatuses: [...resumableStatuses], });
   if (manifest.packageType !== 'Non-Tender'
     || manifest.metodePemilihan !== 'Penunjukan Langsung') {
     throw new Error(
@@ -56,11 +55,6 @@ export function loadPokjaApprovalData({ manifestPath } = {}) {
   if (!resumableStatuses.has(manifest.status)) {
     throw new Error(
       `Status manifest "${manifest.status}" tidak dapat dipakai Flow 3.`
-    );
-  }
-  if (!manifest.packageId || !manifest.packageName) {
-    throw new Error(
-      'Manifest Flow 3 wajib memiliki packageId dan packageName.'
     );
   }
   if (!fs.existsSync(documentPath)) {

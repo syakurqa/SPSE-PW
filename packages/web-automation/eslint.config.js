@@ -7,7 +7,7 @@ export default defineConfig([
   globalIgnores(['playwright.config.js', 'playwright-report/*']),
   ...baseConfig,
   {
-    files: ['**/tests/**'],
+    files: ['**/tests/**/*.spec.js'],
     plugins: {
       playwright,
       'test-tagging': customTestTaggingRules,

@@ -8,6 +8,10 @@ export class PokjaLoginPage {
     this.page = page;
   }
 
+  get actorLabel() {
+    return 'Pokja';
+  }
+
   async login({ username, password }, baseUrl) {
     if (!username || !password) {
       throw new Error('Kredensial Pokja belum dikonfigurasi.');
@@ -22,7 +26,7 @@ export class PokjaLoginPage {
     ).first();
     if (await loginLink.isVisible({ timeout: 10000 }).catch(() => false)) {
       await captureGuideStep(this.page, {
-        instruction: 'Klik LOGIN untuk masuk sebagai anggota Pokja',
+        instruction: `Klik LOGIN untuk masuk sebagai ${this.actorLabel}`,
         target: loginLink,
         expected: 'Halaman autentikasi ditampilkan.'
       });
@@ -59,7 +63,7 @@ export class PokjaLoginPage {
 
     if (!await this.isAuthenticated(activePage)) {
       throw new Error(
-        `Login Pokja gagal. URL terakhir: ${activePage.url()}`
+        `Login ${this.actorLabel} gagal. URL terakhir: ${activePage.url()}`
       );
     }
     this.page = activePage;
@@ -109,7 +113,9 @@ export class PokjaLoginPage {
   }
 
   async bypassSecurityKey(page) {
-    const bypassButton = page.getByRole('button', { name: 'Lanjutkan tanpa Security Key' });
+    const bypassButton = page.locator(
+      'button:has-text("Lanjutkan tanpa Security Key"), a:has-text("Lanjutkan tanpa Security Key")'
+    ).first();
     for (let attempt = 0; attempt < 8; attempt++) {
       if (!await bypassButton.isVisible({ timeout: 15000 }).catch(() => false)) {
         break;
@@ -117,7 +123,7 @@ export class PokjaLoginPage {
       await captureGuideStep(page, {
         instruction: 'Klik Lanjutkan tanpa Security Key',
         target: bypassButton,
-        expected: 'Proses login Pokja berlanjut.'
+        expected: `Proses login ${this.actorLabel} berlanjut.`
       });
       await bypassButton.click({
         force: true,

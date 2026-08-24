@@ -1,13 +1,12 @@
 /* eslint-disable no-console */
 import { Command } from 'commander';
-import { runTestWizard } from '../wizards/test-wizard.js';
-import { runApiTests, runWebTests, runMobileTests } from '../utils/executor.js';
+import { runWebTests } from '../utils/executor.js';
 import { checkConfigFiles } from '../utils/config-manager.js';
 
 export function runTestCommand(program) {
   const testCommand = new Command('test')
-    .description('Run tests interactively or via commands')
-    .argument('[type]', 'Test type: api, web, mobile, or all')
+    .description('Run SPSE Playwright tests')
+    .argument('[type]', 'Only supported value: spse', 'spse')
     .option('--headed', 'Run with visible browser')
     .option('--ui', 'Run in UI mode')
     .option('--env <env>', 'Target environment (SIT/UAT)')
@@ -15,15 +14,8 @@ export function runTestCommand(program) {
     .option('--file <path>', 'Run specific test file')
     .option('--grep <pattern>', 'Filter by test name pattern')
     .option('--workers <n>', 'Number of parallel workers')
-    .option('--preset <name>', 'Use predefined test preset')
-    .option('--run-type <type>', 'Mobile: LOCAL, LAMBDA, or DEVICE-FARM')
-    .option('--device-type <type>', 'Mobile: android or ios')
-    .option('--app <path>', 'Mobile: path to .apk/.ipa')
-    .option('--squad <name>', 'Mobile: squad name')
-    .option('--spec-pattern <pattern>', 'Mobile: test spec glob pattern')
     .action(async (type, options) => {
-      if (type && ['api', 'web', 'mobile'].includes(type)) {
-        // Direct command execution
+      if (type === 'spse') {
         const testOptions = {
           headed: options.headed,
           ui: options.ui,
@@ -32,12 +24,6 @@ export function runTestCommand(program) {
           file: options.file,
           grep: options.grep,
           workers: options.workers,
-          preset: options.preset,
-          runType: options.runType,
-          deviceType: options.deviceType,
-          appPath: options.app,
-          squad: options.squad,
-          specPattern: options.specPattern
         };
 
         // Verify config files exist
@@ -49,21 +35,14 @@ export function runTestCommand(program) {
           process.exit(1);
         }
 
-        let result;
-        if (type === 'api') {
-          result = await runApiTests(testOptions);
-        } else if (type === 'web') {
-          result = await runWebTests(testOptions);
-        } else if (type === 'mobile') {
-          result = await runMobileTests(testOptions);
-        }
+        const result = await runWebTests(testOptions);
 
         if (!result.success) {
           process.exit(result.code);
         }
       } else {
-        // Interactive wizard
-        await runTestWizard(options);
+        console.error('Only SPSE tests are available. Use: npm run qa:test');
+        process.exit(1);
       }
     });
 

@@ -6,3 +6,6 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /.chrome-profile/session-*
+/spse/.auth/
+/spse/runtime/
+/upload-captures/

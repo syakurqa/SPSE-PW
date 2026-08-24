@@ -130,15 +130,13 @@ export class FormPaketPage {
       timeout: 60000
     });
 
-    // Helper fill satu sel Handsontable: dblclick → fill textbox (tanpa Tab/Enter)
-    // Commit terjadi saat sel berikutnya di-dblclick (blur event)
+    // Helper ini selalu commit satu sel dengan Enter. Mengandalkan blur dari
+    // sel berikutnya membuat nilai terakhir mudah hilang saat UI lambat.
     const fillCell = async (rowLocator, colIndex, value, required = true) => {
       if (value === undefined || value === null) return;
       const cell = rowLocator.locator('td').nth(colIndex);
       await cell.scrollIntoViewIfNeeded().catch(() => null);
       await cell.dblclick();
-      await page.waitForTimeout(400);
-      // Cari textbox yang aktif — dalam table custom ini textbox muncul di dalam #tbl-rincian
       const textbox = page.locator(
         'textarea.handsontableInput:visible, #tbl-rincian textarea:visible, #tbl-rincian input[type="text"]:visible'
       ).last();
@@ -153,7 +151,11 @@ export class FormPaketPage {
         return;
       }
       await textbox.fill(String(value));
-      await page.waitForTimeout(200);
+      await textbox.press('Enter');
+      await cell.waitFor({
+        state: 'visible',
+        timeout: 5000
+      });
     };
 
     // 2. Loop untuk setiap item baris
@@ -169,15 +171,12 @@ export class FormPaketPage {
 
       // Isi Jenis Barang/Jasa (td.nth(0))
       await fillCell(row, 0, item.jenisBarang);
-      // Isi Satuan (td.nth(1)) — dblclick ini sekaligus commit Jenis Barang
+      // Isi Satuan (td.nth(1))
       await fillCell(row, 1, item.satuan);
-      // Isi Harga/Biaya (td.nth(3)) — dblclick ini sekaligus commit Satuan
+      // Isi Harga/Biaya (td.nth(3))
       await fillCell(row, 3, item.harga);
-      // Isi Keterangan (td.nth(6)) — dblclick ini sekaligus commit Harga
+      // Isi Keterangan (td.nth(6))
       await fillCell(row, 6, item.keterangan, false);
-      // Tekan Escape untuk tutup editor keterangan lalu tunggu stabilize
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
 
       // === KLIK TOMBOL KBKI PADA BARIS INI ===
       await row.scrollIntoViewIfNeeded().catch(() => null);
@@ -197,11 +196,14 @@ export class FormPaketPage {
         expected: 'Modal pemilihan KBKI terbuka.'
       });
       await kbkiBtn.click();
-      await page.waitForTimeout(1200);
 
       // === MODAL KBKI: Pilih Deskripsi → Cari → Centang → Tambah ===
       const kbkiModal = page.locator('.modal.show, [role="dialog"]:visible')
         .last();
+      await kbkiModal.waitFor({
+        state: 'visible',
+        timeout: 15000
+      });
       const nativeDescriptionSelect = kbkiModal.locator('select').filter({ has: page.locator(`option:has-text("${item.selectText}")`) }).first();
       if (await nativeDescriptionSelect.count() > 0) {
         await nativeDescriptionSelect.selectOption(
@@ -229,9 +231,7 @@ export class FormPaketPage {
         });
         await optionLink.click();
       }
-      await page.waitForTimeout(500);
-
-      const cariKbkiButton = page.getByRole('button', { name: 'Cari KBKI' });
+      const cariKbkiButton = kbkiModal.getByRole('button', { name: 'Cari KBKI', });
       await captureGuideStep(page, {
         instruction: 'Klik Cari KBKI',
         target: cariKbkiButton,
@@ -251,7 +251,7 @@ export class FormPaketPage {
         });
       }
 
-      const radio = page.getByRole('radio').first();
+      const radio = kbkiModal.getByRole('radio').first();
       if (!await radio.isVisible({ timeout: 60000 }).catch(() => false)) {
         const noData = await page.getByText('Tidak ada data', { exact: true }).isVisible().catch(() => false);
         throw new Error(
@@ -265,10 +265,12 @@ export class FormPaketPage {
         expected: 'Kode KBKI ditandai.'
       });
       await radio.check();
-      await page.waitForTimeout(400);
 
-      await page.getByRole('button', { name: 'Tambah' }).click();
-      await page.waitForTimeout(1500);
+      await kbkiModal.getByRole('button', { name: 'Tambah' }).click();
+      await kbkiModal.waitFor({
+        state: 'hidden',
+        timeout: 15000
+      });
 
       const savedRowText = (await row.innerText()).replace(/\s+/g, ' ');
       const expectedPrice = Number(item.harga).toLocaleString('id-ID', {
@@ -290,14 +292,20 @@ export class FormPaketPage {
       expected: 'Rincian HPS dan KBKI tersimpan.'
     });
     await saveHpsButton.click();
-    await page.waitForTimeout(1000);
 
     const alertNotif = page.locator('#alert');
     await alertNotif.waitFor({
       state: 'visible',
       timeout: 15000
-    }).catch(() => null);
-    await page.waitForTimeout(1500);
+    });
+
+    // Reload adalah validasi server-side: nilai yang hanya tersimpan pada
+    // state Handsontable akan hilang dan test harus gagal di bawah ini.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#tbl-rincian tbody tr').first().waitFor({
+      state: 'visible',
+      timeout: 30000,
+    });
 
     const savedTableText = await page.locator('#tbl-rincian').innerText();
     for (const item of items) {
@@ -314,7 +322,7 @@ export class FormPaketPage {
 
     // 4. Klik link Kembali
     await page.getByRole('link', { name: ' Kembali' }).click();
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('domcontentloaded').catch(() => null);
   }
 
   async uploadModalDokumen(linkName, absPath, submitAction) {

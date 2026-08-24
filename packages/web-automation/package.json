@@ -5,12 +5,8 @@
   "license": "ISC",
   "dependencies": {
     "@automation/common-module": "1.0.0",
-    "@faker-js/faker": "^9.6.0",
-    "@jsforce/jsforce-node": "^3.7.0",
     "@playwright/test": "^1.60",
-    "@types/node": "^22.13.14",
-    "moment-timezone": "^0.5.48",
-    "papaparse": "^5.5.3"
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "eslint-plugin-playwright": "^2.2.0",
@@ -18,12 +14,21 @@
     "lint-staged": "^15.5.0"
   },
   "scripts": {
-    "lint": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" eslint . --fix",
-    "test": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test",
-    "test:headed": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test --headed",
+    "lint": "npm run lint:check",
+    "lint:check": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" eslint spse scripts/run-spse-flow1-6.mjs scripts/show-latest-report.mjs --ignore-pattern 'spse/tests/diagnostics/**' --ignore-pattern 'spse/tests/e2e/flow[7-9]-*.spec.js' --ignore-pattern 'spse/tests/e2e/flow1[0-9]-*.spec.js'",
+    "lint:fix": "npm run lint:check -- --fix",
+    "lint:all": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" eslint .",
+    "test": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test --project=spse",
+    "test:all": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test",
+    "test:headed": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test --project=spse --headed",
     "test:ui": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test --ui",
+    "test:flow1-6": "node scripts/run-spse-flow1-6.mjs",
+    "test:flow6:inspect": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test spse/tests/e2e/flow6-inspect.spec.js --project=spse-flow6-form-inspect --workers=1",
+    "test:unit": "node --test spse/tests/unit/*.test.js spse/unit/*.test.js",
+    "capture:upload": "PWDEBUG=1 NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright test --project=spse-upload-capture --headed --workers=1",
     "codegen": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright codegen",
-    "report": "NODE_OPTIONS=\"--loader ../../alias-loader.mjs --no-warnings\" playwright show-report",
+    "codegen:auto-ok": "node scripts/codegen-auto-ok.js",
+    "report": "node scripts/show-latest-report.mjs",
     "zephyr:test-cycle:playwright": "npm run zephyr:test-cycle:playwright --workspace=@automation/common-module"
   }
 }

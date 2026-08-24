@@ -1,5 +1,8 @@
 import { test, expect } from '../../fixtures/base.fixture.js';
-import { updatePackageManifest } from '../../utils/package-manifest.js';
+import {
+  PACKAGE_STATUS,
+  transitionPackageManifest,
+} from '../../utils/package-manifest.js';
 
 test.describe('Flow 2 Dinas Kesehatan Pengadaan Barang Penunjukan Langsung', () => {
   test('Kepala UKPBJ meneruskan paket barang kepada Pokja', { tag: ['@QA-T1', '@feature:health-goods', '@e2e'], }, async ({
@@ -38,10 +41,22 @@ test.describe('Flow 2 Dinas Kesehatan Pengadaan Barang Penunjukan Langsung', () 
     await expect(page.locator('#main')).toContainText(
       'Data paket telah tersimpan'
     );
-    updatePackageManifest(manifestPath, {
-      status: 'SENT_TO_POKJA',
-      approvedBy: 'Kepala UKPBJ',
-      approvedAt: new Date().toISOString(),
+    const evidence = await ukpbjApprovalPage.verifyForwardedPackage({
+      manifest,
+      pokja,
+      documentPath: documents.assignment,
+    });
+    transitionPackageManifest(manifestPath, {
+      from: PACKAGE_STATUS.SENT_TO_UKPBJ,
+      to: PACKAGE_STATUS.SENT_TO_POKJA,
+      expectedRevision: manifest.revision,
+      actor: 'Kepala UKPBJ',
+      reason: 'Paket, Pokja, email, dan dokumen penugasan tervalidasi ulang.',
+      updates: {
+        approvedBy: 'Kepala UKPBJ',
+        approvedAt: new Date().toISOString(),
+        flow2Evidence: evidence,
+      },
     });
   });
 });

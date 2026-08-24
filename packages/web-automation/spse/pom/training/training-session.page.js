@@ -34,25 +34,35 @@ export class TrainingSessionPage {
     );
   }
 
-  async activateAndSetTime(sessionNumber, dateTime) {
+  async activateAndSetTime(sessionNumber, dateTime, { stageName = 'tahap pengadaan yang sedang diuji', } = {}) {
+    if (!Number.isInteger(sessionNumber) || sessionNumber <= 0) {
+      throw new Error('Nomor sesi pelatihan harus berupa bilangan bulat positif.');
+    }
+    if (!/^\d{2}-\d{2}-\d{4}\s+\d{2}:\d{2}$/.test(dateTime)) {
+      throw new Error(
+        `Format waktu sesi tidak valid: "${dateTime}". Gunakan DD-MM-YYYY HH:mm.`
+      );
+    }
+
     const baseUrl = new URL(this.page.url()).origin;
-    const sessionSelect = this.page.locator('select').first();
+    const sessionLabel = `Sesi #${sessionNumber}`;
+    const sessionSelect = this.page.locator('select').filter({ has: this.page.locator('option', { hasText: sessionLabel }), }).first();
     await this.gotoWithServerRecovery(
       `${baseUrl}/spse/training/sesipelatihanpilih`,
       sessionSelect,
       'Halaman pemilihan sesi pelatihan'
     );
     await captureGuideStep(this.page, {
-      instruction: `Pilih Sesi #${sessionNumber}`,
+      instruction: `Pilih ${sessionLabel}`,
       action: 'Pilih',
       target: sessionSelect,
-      expected: `Sesi #${sessionNumber} menjadi sesi pelatihan aktif.`,
+      expected: `${sessionLabel} menjadi sesi pelatihan aktif.`,
     });
-    await sessionSelect.selectOption({ label: `Sesi #${sessionNumber}` });
+    await sessionSelect.selectOption({ label: sessionLabel });
     const selectedSession = (await sessionSelect.locator(
       'option:checked'
     ).textContent())?.trim();
-    if (selectedSession !== `Sesi #${sessionNumber}`) {
+    if (selectedSession !== sessionLabel) {
       throw new Error(
         `Sesi pelatihan gagal dipilih. Aktual: ${selectedSession || '-'}.`
       );
@@ -69,17 +79,20 @@ export class TrainingSessionPage {
       dateInput,
       `Form waktu Sesi #${sessionNumber}`
     );
-    await captureGuideStep(this.page, {
-      instruction: `Ubah waktu Sesi #${sessionNumber} menjadi ${dateTime} WIB`,
-      action: 'Isi',
-      target: dateInput,
-      expected: 'Waktu sesi berada dalam tahap Pemberian Penjelasan.',
-    });
-    await dateInput.fill(dateTime);
-    await this.page.getByRole('button', {
-      name: 'Ubah',
-      exact: true,
-    }).click();
+    const currentDateTime = (await dateInput.inputValue()).trim();
+    if (currentDateTime !== dateTime) {
+      await captureGuideStep(this.page, {
+        instruction: `Ubah waktu Sesi #${sessionNumber} menjadi ${dateTime} WIB`,
+        action: 'Isi',
+        target: dateInput,
+        expected: `Waktu sesi berada dalam ${stageName}.`,
+      });
+      await dateInput.fill(dateTime);
+      await this.page.getByRole('button', {
+        name: 'Ubah',
+        exact: true,
+      }).click();
+    }
 
     // Muat ulang form dari server agar validasi tidak hanya membaca nilai
     // lokal yang baru saja diisikan oleh Playwright.
@@ -99,7 +112,7 @@ export class TrainingSessionPage {
     }
 
     const activeSessionLink = this.page.getByRole('link', {
-      name: `Sesi Pelatihan: Sesi #${sessionNumber}`,
+      name: `Sesi Pelatihan: ${sessionLabel}`,
       exact: true,
     });
     await this.gotoWithServerRecovery(

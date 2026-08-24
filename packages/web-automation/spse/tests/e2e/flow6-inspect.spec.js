@@ -1,6 +1,4 @@
-import fs from 'fs';
-import { test, expect } from '@playwright/test';
-import { env } from '../../../../common-module/config/index.js';
+import { test, expect } from '../../fixtures/workflow.fixture.js';
 import { ProviderLoginPage } from '../../pom/auth/provider-login.page.js';
 import { ProviderPackagePage } from '../../pom/paket/provider-package.page.js';
 import { TrainingSessionPage } from '../../pom/training/training-session.page.js';
@@ -30,12 +28,15 @@ async function describePage(page, label) {
   })).filter((item) => item.text || item.href || item.id || item.name))));
 }
 
-test('inspeksi seluruh form Flow 6 tanpa mengirim penawaran', { tag: ['@QA-T1', '@feature:flow6', '@e2e'], }, async ({ page }) => {
+test('inspeksi seluruh form Flow 6 tanpa mengirim penawaran', { tag: ['@QA-T1', '@feature:flow6'], }, async ({
+  page,
+  spseBaseUrl,
+  packageManifest,
+  providerActor,
+  flow6Scenario,
+}, testInfo) => {
   test.setTimeout(600000);
-  const manifest = JSON.parse(fs.readFileSync(
-    process.env.SPSE_PACKAGE_MANIFEST,
-    'utf8'
-  ));
+  const { manifest } = packageManifest;
   expect([
     'FLOW5_EXPLANATION_COMPLETED',
     'FLOW6_QUALIFICATION_SENT',
@@ -44,12 +45,13 @@ test('inspeksi seluruh form Flow 6 tanpa mengirim penawaran', { tag: ['@QA-T1', 
   ]).toContain(manifest.status);
 
   const login = new ProviderLoginPage(page);
-  const activePage = await login.login({
-    username: process.env.SPSE_PROVIDER_USERNAME,
-    password: process.env.SPSE_PROVIDER_PASSWORD,
-  }, env.SPSE_PLATFORM.BASE_URL);
+  const activePage = await login.login(providerActor, spseBaseUrl);
   const session = new TrainingSessionPage(activePage);
-  await session.activateAndSetTime(25, '24-08-2026 10:00');
+  await session.activateAndSetTime(
+    flow6Scenario.sessionNumber,
+    flow6Scenario.offerTime,
+    { stageName: 'tahap Upload Dokumen Penawaran', }
+  );
   const packages = new ProviderPackagePage(activePage);
   await packages.openAcceptedNonTenderPackageFromHome(manifest);
   await expect(activePage.locator('#main')).toContainText(
@@ -82,7 +84,7 @@ test('inspeksi seluruh form Flow 6 tanpa mengirim penawaran', { tag: ['@QA-T1', 
     await detailPage.goto(candidate.href, { waitUntil: 'domcontentloaded', });
     await describePage(detailPage, `FLOW6_DETAIL_${detailNumber}`);
     await detailPage.screenshot({
-      path: `/tmp/flow6-detail-${detailNumber}.png`,
+      path: testInfo.outputPath(`flow6-detail-${detailNumber}.png`),
       fullPage: true,
     });
     const nestedLinks = await detailPage.locator('#main a').evaluateAll(

@@ -1,7 +1,5 @@
 const packages = [
-  'packages/api-automation',
   'packages/common-module',
-  'packages/mobile-automation',
   'packages/web-automation',
 ];
 

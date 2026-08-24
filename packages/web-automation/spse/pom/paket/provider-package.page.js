@@ -5,6 +5,37 @@ export class ProviderPackagePage {
     this.page = page;
   }
 
+  async waitForPackageTableReady(previousSignature = null) {
+    const processing = this.page.locator(
+      '.dataTables_processing:visible, [id$="_processing"]:visible'
+    ).first();
+    if (await processing.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await processing.waitFor({
+        state: 'hidden',
+        timeout: 30000
+      });
+    }
+
+    await this.page.waitForFunction(({ previous }) => {
+      const rows = Array.from(document.querySelectorAll('table tbody tr'));
+      if (rows.length === 0) {
+        return false;
+      }
+      const signature = rows.map((row) => (
+        row.textContent || ''
+      )).join('|').replace(/\s+/g, ' ').trim();
+      return signature.length > 0 && (!previous || signature !== previous);
+    }, { previous: previousSignature }, { timeout: 30000 });
+  }
+
+  async currentTableSignature() {
+    return this.page.locator('table tbody tr').evaluateAll((rows) => (
+      rows.map((row) => row.textContent || '').join('|')
+        .replace(/\s+/g, ' ')
+        .trim()
+    ));
+  }
+
   async openNonTenderPackage(manifest) {
     return this.openAvailableNonTenderPackage(manifest);
   }
@@ -49,6 +80,7 @@ export class ProviderPackagePage {
     });
     await nonTenderTab.click();
     await this.page.waitForLoadState('domcontentloaded').catch(() => null);
+    await this.waitForPackageTableReady();
   }
 
   async openPackageFromCurrentList(manifest, { expected }) {
@@ -56,8 +88,16 @@ export class ProviderPackagePage {
       'input[type="search"], input[placeholder*="Cari" i]'
     ).first();
     if (await search.isVisible({ timeout: 5000 }).catch(() => false)) {
+      const previousSignature = await this.currentTableSignature();
       await search.fill(manifest.procurementPackageId || manifest.packageName);
-      await this.page.waitForTimeout(1000);
+      await this.waitForPackageTableReady(previousSignature).catch(async () => {
+        // Sebagian versi DataTables tidak mengganti isi bila hanya ada satu
+        // hasil. Dalam kondisi itu cukup pastikan baris paket sudah tampil.
+        await this.packageRowsMatching(manifest).first().waitFor({
+          state: 'visible',
+          timeout: 30000,
+        });
+      });
     }
 
     const packageRow = await this.findPackageRowAcrossPages(manifest);
@@ -80,9 +120,8 @@ export class ProviderPackagePage {
   }
 
   async findPackageRowAcrossPages(manifest) {
-    const packageMarker = manifest.procurementPackageId || manifest.packageId;
     for (let pageNumber = 1; pageNumber <= 10; pageNumber++) {
-      const packageRow = this.page.locator('table tbody tr').filter({ hasText: manifest.packageName, }).or(this.page.locator('table tbody tr').filter({ hasText: packageMarker, })).first();
+      const packageRow = this.packageRowsMatching(manifest).first();
       if (await packageRow.isVisible({ timeout: 2000 }).catch(() => false)) {
         return packageRow;
       }
@@ -97,11 +136,20 @@ export class ProviderPackagePage {
       if (/disabled/i.test(disabled || '')) {
         break;
       }
+      const previousSignature = await this.currentTableSignature();
       await nextPage.click();
-      await this.page.waitForTimeout(1000);
+      await this.waitForPackageTableReady(previousSignature);
     }
     throw new Error(
       `Paket ${manifest.packageName} tidak ditemukan pada daftar Non Tender Penyedia.`
+    );
+  }
+
+  packageRowsMatching(manifest) {
+    const rows = this.page.locator('table tbody tr');
+    const packageMarker = manifest.procurementPackageId || manifest.packageId;
+    return rows.filter({ hasText: manifest.packageName }).or(
+      rows.filter({ hasText: packageMarker })
     );
   }
 
@@ -153,8 +201,14 @@ export class ProviderPackagePage {
       'input[type="search"], input[placeholder*="Cari" i]'
     ).first();
     if (await search.isVisible({ timeout: 5000 }).catch(() => false)) {
+      const previousSignature = await this.currentTableSignature();
       await search.fill(manifest.procurementPackageId || manifest.packageName);
-      await this.page.waitForTimeout(1000);
+      await this.waitForPackageTableReady(previousSignature).catch(async () => {
+        await this.packageRowsMatching(manifest).first().waitFor({
+          state: 'visible',
+          timeout: 30000,
+        });
+      });
     }
 
     const packageEntry = await this.findPackageRowAcrossPages(manifest);

@@ -1,5 +1,8 @@
 import { test, expect } from '../../fixtures/base.fixture.js';
-import { updatePackageManifest } from '../../utils/package-manifest.js';
+import {
+  PACKAGE_STATUS,
+  transitionPackageManifest,
+} from '../../utils/package-manifest.js';
 
 test.describe('SPSE Persetujuan Non-Tender oleh Kepala UKPBJ', () => {
   test('Kepala UKPBJ memverifikasi paket dan mengirimkannya kepada Pokja', {
@@ -57,10 +60,22 @@ test.describe('SPSE Persetujuan Non-Tender oleh Kepala UKPBJ', () => {
     });
 
     await test.step('Memperbarui status manifest Flow 2', async () => {
-      updatePackageManifest(manifestPath, {
-        status: 'SENT_TO_POKJA',
-        approvedBy: 'Kepala UKPBJ',
-        approvedAt: new Date().toISOString()
+      const evidence = await ukpbjApprovalPage.verifyForwardedPackage({
+        manifest,
+        pokja,
+        documentPath: documents.assignment,
+      });
+      transitionPackageManifest(manifestPath, {
+        from: PACKAGE_STATUS.SENT_TO_UKPBJ,
+        to: PACKAGE_STATUS.SENT_TO_POKJA,
+        expectedRevision: manifest.revision,
+        actor: 'Kepala UKPBJ',
+        reason: 'Paket, Pokja, email, dan dokumen penugasan tervalidasi ulang.',
+        updates: {
+          approvedBy: 'Kepala UKPBJ',
+          approvedAt: new Date().toISOString(),
+          flow2Evidence: evidence,
+        },
       });
     });
   });

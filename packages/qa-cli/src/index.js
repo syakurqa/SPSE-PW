@@ -7,7 +7,6 @@ import { runReportCommand } from './commands/report.js';
 import { runConfigCommand } from './commands/config.js';
 import { runHealthCommand } from './commands/health.js';
 import { runCodegenCommand } from './commands/codegen.js';
-import { runMainMenu } from './wizards/main-menu-wizard.js';
 
 const program = new Command();
 
@@ -24,9 +23,9 @@ runConfigCommand(program);
 runHealthCommand(program);
 runCodegenCommand(program);
 
-// Show interactive menu when no subcommand given, else parse normally
+// Run the SPSE suite by default; no legacy API/mobile menu is exposed.
 if (process.argv.length <= 2) {
-  await runMainMenu();
+  program.parse([...process.argv, 'test', 'spse']);
 } else {
   program.parse(process.argv);
 }

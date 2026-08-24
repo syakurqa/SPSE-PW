@@ -1,142 +1,85 @@
-name: Automation test
-run-name: Run ${{ github.event.inputs.test_environment }} ${{ github.event.inputs.workspace_type }} ${{ github.event.inputs.keyword }}
+name: Run SPSE tests
+
 on:
   workflow_dispatch:
     inputs:
-      workspace_type:
-        description: "Please input workspace"
-        type: choice
-        required: true
-        options:
-          - api
-          - web
-          - android
-          - ios
       test_environment:
-        description: "Please input environment to test."
-        type: choice
+        description: Target environment
         required: true
-        default: "SIT"
-        options:
-          - SIT
-          - UAT
-      workers:
-        description: "Number of parallel workers for test execution"
+        default: SIT
         type: choice
-        required: true
-        default: "16"
-        options:
-          - "2"
-          - "4"
-          - "8"
-          - "16"
-      keyword:
-        description: "Please input keyword. Run tests with specific tag on 📱 mobile. Example: @smoke or @regression"
+        options: [SIT, UAT]
+      grep:
+        description: Optional grep untuk test independen (kosong = Flow 1-6 serial)
         required: false
-        default: ""
-      run_type:
-        description: "📱 [Mobile] Choose execution platform: DEVICE-FARM or LAMBDA"
-        type: choice
-        required: false
-        default: "DEVICE-FARM"
-        options:
-          - DEVICE-FARM
-          - LAMBDA
-      app_id:
-        description: "📱 [Mobile] App ID: Specify from LAMBDA or DEVICE-FARM"
-        required: false
-        default: ""
-      spec_pattern:
-        description: '📱 [Mobile] Test Pattern: WDIO spec glob (e.g., bfi-mobile/tests/**/*.spec.js)'
-        required: false
-        default: ""
-      parallel_mode:
-        description: "📱 [Mobile] Parallel Mode: split-specs or all-devices"
-        type: choice
-        required: false
-        default: "split-specs"
-        options:
-          - all-devices
-          - split-specs
-      squad:
-        description: "📱 [Mobile] Squad: Select testing squad (e.g., BFI_MOBILE)"
-        type: choice
-        required: false
-        default: "BFI_MOBILE"
-        options:
-          - BFI_MOBILE
-      device_name:
-        description: "📱 [Mobile] Device Name: Specify from LambdaTest (optional)"
-        required: false
-        default: ""
-      platform_version:
-        description: "📱 [Mobile] Platform Version: Specify from LambdaTest (optional)"
-        required: false
-        default: ""
+        type: string
 
 jobs:
-  run-tests:
-    if: ${{ github.event.inputs.workspace_type != 'android' && github.event.inputs.workspace_type != 'ios' }}
-    uses: ./.github/workflows/run-tests.yml
-    with:
-      workspace_type: ${{ github.event.inputs.workspace_type }}
-      test_environment: ${{ github.event.inputs.test_environment }}
-      githost_environment: qa-runner
-      keyword: ${{ github.event.inputs.keyword }}
-      workers: ${{ github.event.inputs.workers }}
-    secrets: inherit
-
-  report:
-    if: ${{ !cancelled() && github.event.inputs.workspace_type != 'android' && github.event.inputs.workspace_type != 'ios' }}
-    needs: [run-tests]
-    uses: ./.github/workflows/report.yml
-    with:
-      workspace_type: ${{ github.event.inputs.workspace_type }}
-      test_environment: ${{ github.event.inputs.test_environment }}
-      keyword: ${{ github.event.inputs.keyword }}
-      scheduler: false
-    secrets: inherit
-  
-  validate-mobile-inputs:
-    if: ${{ !cancelled() && (github.event.inputs.workspace_type == 'android' || github.event.inputs.workspace_type == 'ios') }}
+  spse:
     runs-on: qa-runner
+    environment: ${{ inputs.test_environment }}
+    env:
+      CI: true
+      ENV: ${{ inputs.test_environment }}
+      PLAYWRIGHT_ENV: ${{ secrets.PLAYWRIGHT_ENV }}
+      SPSE_UKPBJ_USERNAME: ${{ secrets.SPSE_UKPBJ_USERNAME }}
+      SPSE_UKPBJ_PASSWORD: ${{ secrets.SPSE_UKPBJ_PASSWORD }}
+      SPSE_POKJA_1_USERNAME: ${{ secrets.SPSE_POKJA_1_USERNAME }}
+      SPSE_POKJA_1_PASSWORD: ${{ secrets.SPSE_POKJA_1_PASSWORD }}
+      SPSE_POKJA_2_USERNAME: ${{ secrets.SPSE_POKJA_2_USERNAME }}
+      SPSE_POKJA_2_PASSWORD: ${{ secrets.SPSE_POKJA_2_PASSWORD }}
+      SPSE_POKJA_3_USERNAME: ${{ secrets.SPSE_POKJA_3_USERNAME }}
+      SPSE_POKJA_3_PASSWORD: ${{ secrets.SPSE_POKJA_3_PASSWORD }}
+      SPSE_PROVIDER_USERNAME: ${{ secrets.SPSE_PROVIDER_USERNAME }}
+      SPSE_PROVIDER_PASSWORD: ${{ secrets.SPSE_PROVIDER_PASSWORD }}
+      SPSE_POKJA_1_DISPLAY_NAME: ${{ vars.SPSE_POKJA_1_DISPLAY_NAME }}
+      SPSE_PROVIDER_DISPLAY_NAME: ${{ vars.SPSE_PROVIDER_DISPLAY_NAME }}
+      SPSE_POKJA_NAME: ${{ vars.SPSE_POKJA_NAME }}
+      SPSE_POKJA_INDEX: ${{ vars.SPSE_POKJA_INDEX }}
     steps:
-      - name: Validate required mobile inputs
+      - name: Validate required environment secrets
+        shell: bash
         run: |
-          APP_ID="${{ github.event.inputs.app_id }}"
-          SPEC_PATTERN="${{ github.event.inputs.spec_pattern }}"
+          required_secrets=(
+            PLAYWRIGHT_ENV
+            SPSE_UKPBJ_USERNAME
+            SPSE_UKPBJ_PASSWORD
+            SPSE_POKJA_1_USERNAME
+            SPSE_POKJA_1_PASSWORD
+            SPSE_POKJA_2_USERNAME
+            SPSE_POKJA_2_PASSWORD
+            SPSE_POKJA_3_USERNAME
+            SPSE_POKJA_3_PASSWORD
+            SPSE_PROVIDER_USERNAME
+            SPSE_PROVIDER_PASSWORD
+          )
+          missing_secrets=()
 
-          if [[ -z "${APP_ID// }" ]]; then
-            echo "::error::Input 'app_id' is required for mobile runs. Please specify an app ID from LAMBDA or DEVICE-FARM."
+          for secret_name in "${required_secrets[@]}"; do
+            secret_value="${!secret_name}"
+            if [[ -z "${secret_value//[[:space:]]/}" ]]; then
+              missing_secrets+=("$secret_name")
+            fi
+          done
+
+          if (( ${#missing_secrets[@]} > 0 )); then
+            printf '::error::Required GitHub environment secret is empty: %s\n' \
+              "${missing_secrets[@]}"
             exit 1
           fi
-
-          if [[ -z "${SPEC_PATTERN// }" ]]; then
-            echo "::error::Input 'spec_pattern' is required for mobile runs. Example: bfi-mobile/tests/**/*.spec.js"
-            exit 1
-          fi
-
-          echo "✅ All required mobile inputs provided:"
-          echo "  app_id: $APP_ID"
-          echo "  spec_pattern: $SPEC_PATTERN"
-
-  run-mobile-tests:
-    if: ${{ !cancelled() && needs.validate-mobile-inputs.result == 'success' }}
-    needs: [validate-mobile-inputs]
-    uses: ./.github/workflows/run-tests-mobile.yml
-    with:
-      run_type: ${{ github.event.inputs.run_type }}
-      app_id: ${{ github.event.inputs.app_id }}
-      spec_pattern: ${{ github.event.inputs.spec_pattern }}
-      parallel_mode: ${{ github.event.inputs.parallel_mode }}
-      squad: ${{ github.event.inputs.squad }}
-      device_type: ${{ github.event.inputs.workspace_type }}
-      workers: ${{ github.event.inputs.workers }}
-      device_name: ${{ github.event.inputs.device_name }}
-      platform_version: ${{ github.event.inputs.platform_version }}
-      environment: ${{ github.event.inputs.test_environment }}
-      githost_environment: qa-runner
-      tag: ${{ github.event.inputs.keyword }}
-    secrets: inherit
-
-  
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Configure environment
+        run: printf '%s\n' "$PLAYWRIGHT_ENV" > packages/common-module/config/env.${{ inputs.test_environment == 'SIT' && 'sit' || 'uat' }}.json
+      - run: npm ci
+      - name: Run SPSE Flow 1-6 serial
+        if: ${{ inputs.grep == '' }}
+        run: npm run test:spse:flow1-6
+      - name: Run filtered independent SPSE test
+        if: ${{ inputs.grep != '' }}
+        env:
+          PLAYWRIGHT_GREP: ${{ inputs.grep }}
+        run: npm run test:spse -- --grep="$PLAYWRIGHT_GREP" --workers=1

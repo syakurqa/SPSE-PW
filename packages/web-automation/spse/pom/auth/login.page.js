@@ -1,5 +1,9 @@
 import { captureGuideStep } from '../../utils/guide-capture.js';
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export class LoginPage {
   /**
    * @param {import('@playwright/test').Page} page
@@ -37,7 +41,10 @@ export class LoginPage {
     });
   }
 
-  async login(email, password, baseUrl) {
+  async login(email, password, baseUrl, {
+    organization = 'DINAS KESEHATAN',
+    role = 'PPK',
+  } = {}) {
     if (!email || !password) {
       throw new Error('Kredensial PPK belum dikonfigurasi.');
     }
@@ -138,8 +145,11 @@ export class LoginPage {
     // Step 6: Bypass Security Key lagi jika muncul sebelum pilihan persona
     await this.bypassSecurityKey(activePage);
 
-    // Step 7: Pilih Role PPK Kota Cirebon
-    await this.selectRole(activePage);
+    // Step 7: pilih role hanya pada organisasi yang dikonfigurasi.
+    await this.selectRole(activePage, {
+      organization,
+      role
+    });
 
     await activePage.waitForURL(url => url.pathname.includes('/spse'), { timeout: 30000 }).catch(() => null);
     await activePage.waitForLoadState('domcontentloaded').catch(() => null);
@@ -214,7 +224,7 @@ export class LoginPage {
     return page;
   }
 
-  async selectRole(page) {
+  async selectRole(page, { organization, role }) {
     await this.bypassSecurityKey(page);
     await page.waitForTimeout(1200);
     if (await this.isAuthenticated(page, 3000)) {
@@ -223,28 +233,34 @@ export class LoginPage {
 
     const roleButtons = page.locator('button[id^="login-pesona-"]');
     if (await roleButtons.first().isVisible({ timeout: 15000 }).catch(() => false)) {
-      const healthRole = page.locator('tr').filter({ hasText: /DINAS KESEHATAN/i, }).filter({ hasText: /PPK/i, }).locator('button[id^="login-pesona-"]').first();
-      const cirebonRole = page.locator('tr').filter({ hasText: /KOTA CIREBON|DINAS PERUMAHAN/i, }).filter({ hasText: /PPK/i, }).locator('button[id^="login-pesona-"]').first();
-      const desiredRole = await healthRole.isVisible().catch(() => false)
-        ? healthRole
-        : cirebonRole;
+      const organizationPattern = new RegExp(escapeRegExp(organization), 'i');
+      const rolePattern = new RegExp(`\\b${escapeRegExp(role)}\\b`, 'i');
+      const desiredRow = page.locator('tr')
+        .filter({ hasText: organizationPattern, })
+        .filter({ hasText: rolePattern, });
+      const matchingRows = await desiredRow.count();
+      if (matchingRows !== 1) {
+        throw new Error(
+          `Role ${role} untuk organisasi "${organization}" harus tepat satu, `
+          + `aktual ${matchingRows}.`
+        );
+      }
+      const desiredRole = desiredRow.locator(
+        'button[id^="login-pesona-"]'
+      ).first();
 
       if (await desiredRole.isVisible().catch(() => false)) {
         await captureGuideStep(page, {
-          instruction: 'Pilih role PPK untuk satker yang sesuai',
+          instruction: `Pilih role ${role} untuk ${organization}`,
           action: 'Pilih',
           target: desiredRole,
-          expected: 'Dashboard PPK terbuka.'
+          expected: `Dashboard ${role} terbuka.`
         });
         await desiredRole.click();
       } else {
-        const pesona5 = page.locator('#login-pesona-5-btn');
-        if (await pesona5.isVisible({ timeout: 5000 }).catch(() => false)) {
-          await pesona5.click();
-        } else {
-          const fallbackRole = roleButtons.first();
-          await fallbackRole.click();
-        }
+        throw new Error(
+          `Tombol Masuk role ${role} untuk "${organization}" tidak tersedia.`
+        );
       }
     }
     await page.waitForLoadState('domcontentloaded').catch(() => null);

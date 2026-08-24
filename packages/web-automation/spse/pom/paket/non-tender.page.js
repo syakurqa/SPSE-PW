@@ -1,6 +1,10 @@
 import { FormPaketPage } from './form-paket.page.js';
 import { captureGuideStep } from '../../utils/guide-capture.js';
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export class NonTenderPage extends FormPaketPage {
   /**
    * @param {import('@playwright/test').Page} page
@@ -28,8 +32,51 @@ export class NonTenderPage extends FormPaketPage {
     return this.page;
   }
 
-  async handleInaprocSsoIfNeeded(username, password, targetPage = null) {
+  async waitForRupTableReady({ requireRow = true } = {}) {
+    const page = this.getActivePage();
+    const processing = page.locator(
+      '.dataTables_processing:visible, [id$="_processing"]:visible'
+    ).first();
+    if (await processing.isVisible({ timeout: 500 }).catch(() => false)) {
+      await processing.waitFor({
+        state: 'hidden',
+        timeout: 30000
+      });
+    }
+    if (requireRow) {
+      await page.locator('table tbody tr').first().waitFor({
+        state: 'visible',
+        timeout: 30000,
+      });
+    }
+  }
+
+  parseLargestRupiah(text) {
+    const values = [...text.matchAll(
+      /Rp\.?\s*([\d.]+(?:,\d+)?)\s*(Jt|M)?/gi
+    )].map((match) => {
+      const value = Number(
+        match[1].replace(/\./g, '').replace(',', '.')
+      );
+      const unit = match[2]?.toLowerCase();
+      const multiplier = unit === 'm'
+        ? 1_000_000_000
+        : unit === 'jt'
+          ? 1_000_000
+          : 1;
+      return value * multiplier;
+    }).filter(Number.isFinite);
+    return values.length > 0 ? Math.max(...values) : null;
+  }
+
+  async handleInaprocSsoIfNeeded(
+    username,
+    password,
+    targetPage = null,
+    { organization = 'DINAS PERHUBUNGAN' } = {}
+  ) {
     const page = targetPage || this.getActivePage();
+    const organizationPattern = new RegExp(escapeRegExp(organization), 'i');
     for (let i = 0; i < 15; i++) {
       const url = page.url();
       if (url.includes('/spse/rencananontender') || url.includes('/spse/paketnontender/tambah')) {
@@ -122,7 +169,8 @@ export class NonTenderPage extends FormPaketPage {
               return this.handleInaprocSsoIfNeeded(
                 username,
                 password,
-                popup
+                popup,
+                { organization }
               );
             }
             await page.waitForTimeout(3000);
@@ -138,7 +186,10 @@ export class NonTenderPage extends FormPaketPage {
 
       // Setelah memilih platform, UI terbaru menampilkan satu tahap tambahan
       // berisi daftar akses dan tombol Masuk sebelum halaman persona SPSE.
-      const ppkAccessRow = page.locator('tr').filter({ hasText: /DINAS PERHUBUNGAN/i, }).filter({ hasText: /PPK/i, }).first();
+      const ppkAccessRow = page.locator('tr')
+        .filter({ hasText: organizationPattern, })
+        .filter({ hasText: /\bPPK\b/i, })
+        .first();
       const enterAccessButton = ppkAccessRow.getByRole('button', {
         name: 'Masuk',
         exact: true,
@@ -152,9 +203,27 @@ export class NonTenderPage extends FormPaketPage {
         await page.waitForTimeout(2000);
       }
 
-      const roleBtn = page.locator('button[id^="login-pesona-"]').filter({ hasText: /PPK/i }).or(page.locator('#login-pesona-5-btn')).first();
-      if (await roleBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
-        await roleBtn.click({ force: true });
+      const roleButtons = page.locator('button[id^="login-pesona-"]');
+      if (await roleButtons.first().isVisible({ timeout: 4000 }).catch(() => false)) {
+        const desiredRows = page.locator('tr')
+          .filter({ hasText: organizationPattern, })
+          .filter({ hasText: /\bPPK\b/i, });
+        const matchingRows = await desiredRows.count();
+        if (matchingRows !== 1) {
+          throw new Error(
+            `Role PPK untuk organisasi "${organization}" harus tepat satu, `
+            + `aktual ${matchingRows}.`
+          );
+        }
+
+        const roleButton = desiredRows.locator(
+          'button[id^="login-pesona-"]'
+        ).first();
+        await roleButton.waitFor({
+          state: 'visible',
+          timeout: 10000
+        });
+        await roleButton.click({ force: true });
         await page.waitForTimeout(3000);
       }
 
@@ -162,7 +231,11 @@ export class NonTenderPage extends FormPaketPage {
     }
   }
 
-  async navigateToBuatPaket(username, password, retryAfterLogin = 0) {
+  async navigateToBuatPaket(username, password, {
+    retryAfterLogin = 0,
+    baseUrl = null,
+    organization = 'DINAS PERHUBUNGAN',
+  } = {}) {
     const page = this.getActivePage();
     await page.bringToFront().catch(() => null);
     await page.waitForLoadState('domcontentloaded').catch(() => null);
@@ -208,19 +281,21 @@ export class NonTenderPage extends FormPaketPage {
     await buatPaketLink.click();
     await page.waitForTimeout(2000);
     // 4. Handle re-authentication if intercepted by INAPROC/Pomerium
-    await this.handleInaprocSsoIfNeeded(username, password);
+    await this.handleInaprocSsoIfNeeded(username, password, null, { organization, });
 
     const activePage = this.getActivePage();
     let activeUrl = new URL(activePage.url());
-    if (activeUrl.hostname !== 'pengadaan-stg-2.eproc.dev') {
-      await activePage.goto('https://pengadaan-stg-2.eproc.dev/spse/', {
+    const expectedSpseUrl = new URL(baseUrl || activePage.url());
+    if (activeUrl.hostname !== expectedSpseUrl.hostname) {
+      await activePage.goto(expectedSpseUrl.href, {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
       });
       activeUrl = new URL(activePage.url());
-      if (activeUrl.hostname !== 'pengadaan-stg-2.eproc.dev') {
+      if (activeUrl.hostname !== expectedSpseUrl.hostname) {
         throw new Error(
-          `Gagal mengoreksi redirect login ulang ke SPSE 2. URL: ${activePage.url()}`
+          `Gagal mengoreksi redirect login ulang ke ${expectedSpseUrl.hostname}. `
+          + `URL: ${activePage.url()}`
         );
       }
     }
@@ -230,7 +305,11 @@ export class NonTenderPage extends FormPaketPage {
       return this.navigateToBuatPaket(
         username,
         password,
-        retryAfterLogin + 1
+        {
+          retryAfterLogin: retryAfterLogin + 1,
+          baseUrl: expectedSpseUrl.href,
+          organization,
+        }
       );
     }
     if (!formIsOpen) {
@@ -259,8 +338,14 @@ export class NonTenderPage extends FormPaketPage {
     ).first();
 
     if (tahun && await tahunSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await tahunSelect.selectOption(tahun, { force: true }).catch(() => null);
-      await page.waitForTimeout(500);
+      await tahunSelect.selectOption(tahun);
+      const selectedYear = await tahunSelect.inputValue();
+      if (selectedYear !== tahun) {
+        throw new Error(
+          `Tahun RUP gagal dipilih. Diharapkan ${tahun}, aktual ${selectedYear}.`
+        );
+      }
+      await this.waitForRupTableReady({ requireRow: false });
     }
 
     await satkerSelect.locator('option').filter({ hasText: satkerQuery }).first().waitFor({
@@ -274,11 +359,9 @@ export class NonTenderPage extends FormPaketPage {
       expected: 'RUP difilter untuk satuan kerja tersebut.'
     });
     await satkerSelect.selectOption(
-      { label: satkerQuery },
-      { force: true }
+      { label: satkerQuery }
     );
-    await satkerSelect.dispatchEvent('change');
-    await page.waitForTimeout(800);
+    await this.waitForRupTableReady();
 
     await metodeSelect.locator('option').filter({ hasText: metodeLabel }).first().waitFor({
       state: 'attached',
@@ -291,17 +374,15 @@ export class NonTenderPage extends FormPaketPage {
       expected: 'Tabel hanya menampilkan RUP dengan metode yang sesuai.'
     });
     await metodeSelect.selectOption(
-      { label: metodeLabel },
-      { force: true }
+      { label: metodeLabel }
     );
-    await metodeSelect.dispatchEvent('change');
-    await page.waitForTimeout(800);
+    await this.waitForRupTableReady();
 
     if (jenisPengadaanLabel) {
       await jenisSelect.locator('option').filter({ hasText: jenisPengadaanLabel }).first().waitFor({
         state: 'attached',
         timeout: 10000
-      }).catch(() => null);
+      });
       await captureGuideStep(page, {
         instruction: `Pilih Jenis Pengadaan ${jenisPengadaanLabel}`,
         action: 'Pilih',
@@ -309,21 +390,16 @@ export class NonTenderPage extends FormPaketPage {
         expected: 'Jenis pengadaan paket terpilih.'
       });
       await jenisSelect.selectOption(
-        { label: jenisPengadaanLabel },
-        { force: true }
-      ).catch(() => null);
-      await jenisSelect.dispatchEvent('change').catch(() => null);
-      await page.waitForTimeout(800);
+        { label: jenisPengadaanLabel }
+      );
+      await this.waitForRupTableReady();
     }
 
-    await page.locator('table tbody tr').first().waitFor({
-      state: 'visible',
-      timeout: 30000
-    });
+    await this.waitForRupTableReady();
   }
 
   async selectRencanaAndCreatePaket({
-    rupName, rupIndex, metodeLabel, minimumPagu
+    rupName, rupIndex, rupPosition, metodeLabel, minimumPagu
   }) {
     const page = this.getActivePage();
 
@@ -353,20 +429,7 @@ export class NonTenderPage extends FormPaketPage {
       for (let index = 0; index < count; index++) {
         const candidate = candidateRows.nth(index);
         const text = (await candidate.textContent()) || '';
-        const currencyValues = [...text.matchAll(
-          /Rp\.?\s*([\d.]+(?:,\d+)?)\s*(Jt|M)?/gi
-        )].map((match) => {
-          const value = Number(
-            match[1].replace(/\./g, '').replace(',', '.')
-          );
-          const multiplier = match[2]?.toLowerCase() === 'm'
-            ? 1_000_000_000
-            : match[2]?.toLowerCase() === 'jt'
-              ? 1_000_000
-              : 1;
-          return value * multiplier;
-        });
-        const pagu = Math.max(0, ...currencyValues);
+        const pagu = this.parseLargestRupiah(text);
         if (pagu > minimumPagu) {
           targetRow = candidate;
           selectedPagu = pagu;
@@ -378,8 +441,18 @@ export class NonTenderPage extends FormPaketPage {
           `Tidak ada RUP dengan pagu di atas Rp${minimumPagu.toLocaleString('id-ID')}.`
         );
       }
-    } else if (typeof rupIndex === 'number') {
-      targetRow = candidateRows.nth(rupIndex);
+    } else if (typeof (rupPosition ?? rupIndex) === 'number') {
+      const configuredPosition = rupPosition ?? rupIndex;
+      const count = await candidateRows.count();
+      if (!Number.isInteger(configuredPosition)
+        || configuredPosition < 1
+        || configuredPosition > count) {
+        throw new Error(
+          `Urutan RUP ${configuredPosition} tidak tersedia; jumlah kandidat ${count}. `
+          + 'Urutan RUP dimulai dari 1.'
+        );
+      }
+      targetRow = candidateRows.nth(configuredPosition - 1);
     }
 
     await targetRow.waitFor({
@@ -387,6 +460,7 @@ export class NonTenderPage extends FormPaketPage {
       timeout: 15000
     });
     const rowText = (await targetRow.textContent())?.replace(/\s+/g, ' ').trim();
+    selectedPagu ??= this.parseLargestRupiah(rowText || '');
     const checkbox = targetRow.locator(
       'input[type="checkbox"]:not([disabled]), .dt-checkboxes'
     ).first();
@@ -398,7 +472,9 @@ export class NonTenderPage extends FormPaketPage {
       expected: 'RUP terpilih untuk dibuat menjadi paket.'
     });
     await checkbox.check({ force: true });
-    await page.waitForTimeout(500);
+    if (!await checkbox.isChecked()) {
+      throw new Error('Checkbox RUP belum terpilih setelah aksi check.');
+    }
 
     const buatPaketActionBtn = page.locator(
       '#buatPaket, button:has-text("Buat Paket"), input[value*="Buat Paket"]'

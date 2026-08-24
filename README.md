@@ -15,7 +15,7 @@ Automation end-to-end proses paket **Non-Tender – Penunjukan Langsung** pada S
 | 5 | Penyedia + Pokja | Lima pertanyaan pemberian penjelasan dan lima jawaban | `FLOW5_EXPLANATION_COMPLETED` |
 | 6 | Penyedia | Mengirim kualifikasi, Surat Penawaran, teknis, harga, PPN, dan TKDN/PDN | `FLOW6_SUBMISSION_COMPLETED` |
 
-Manifest default berada di `packages/web-automation/spse/runtime/packages/<package-id>.json`. Folder runtime diabaikan Git karena berisi state lokal.
+Flow 1 standalone menyimpan manifest default sebagai `packages/web-automation/spse/runtime/packages/<package-id>.json`; runner serial memakai nama unik `flow1-6-<timestamp>-<pid>.json` dan meneruskan path tersebut otomatis ke Flow 2–6. Folder runtime diabaikan Git karena berisi state lokal.
 
 Panduan visual lengkap dengan screenshot setiap tindakan tersedia di [`packages/web-automation/docs/visual-guide-flow1-6-20260821/README.md`](packages/web-automation/docs/visual-guide-flow1-6-20260821/README.md). Panduan tersebut memakai satu eksekusi headed terbaru dari Flow 1 sampai Flow 6.
 
@@ -55,19 +55,21 @@ SPSE_PPK_USERNAME=<email-ppk>
 SPSE_PPK_PASSWORD=<password-ppk>
 
 # Flow 1 khusus Pengadaan Langsung -> Pejabat Pengadaan
-SPSE_PPK_PP_USERNAME=<email-ppk-khusus>
-SPSE_PPK_PP_PASSWORD=<password-ppk-khusus>
-SPSE_PPK_PP_RUP_INDEX=1
+# SPSE_PPK_PP_USERNAME=<email-ppk-khusus>
+# SPSE_PPK_PP_PASSWORD=<password-ppk-khusus>
+# SPSE_PPK_PP_RUP_INDEX=1
 
 # Flow 2
 SPSE_UKPBJ_USERNAME=<email-kepala-ukpbj>
 SPSE_UKPBJ_PASSWORD=<password-kepala-ukpbj>
-SPSE_POKJA_NAME=<nama-pokja-exact>
+# Nama exact opsional; jika kosong digunakan index 1-based
+# SPSE_POKJA_NAME=<nama-pokja-exact>
 SPSE_POKJA_INDEX=1
 
 # Flow 3 dan jawaban Pokja pada Flow 5
 SPSE_POKJA_1_USERNAME=<email-pokja-1>
 SPSE_POKJA_1_PASSWORD=<password-pokja-1>
+# SPSE_POKJA_1_DISPLAY_NAME=<nama-pokja-1-di-ui>
 SPSE_POKJA_2_USERNAME=<email-pokja-2>
 SPSE_POKJA_2_PASSWORD=<password-pokja-2>
 SPSE_POKJA_3_USERNAME=<email-pokja-3>
@@ -76,20 +78,22 @@ SPSE_POKJA_3_PASSWORD=<password-pokja-3>
 # Flow 4-6
 SPSE_PROVIDER_USERNAME=<email-penyedia>
 SPSE_PROVIDER_PASSWORD=<password-penyedia>
+# SPSE_PROVIDER_DISPLAY_NAME=<nama-penyedia-di-ui>
 
-# Diisi setelah Flow 1; Flow 2-6 memakai path yang sama
-SPSE_PACKAGE_MANIFEST=/absolute/path/to/package-manifest.json
+# Hanya untuk spec manual/resume; runner serial mengisi path otomatis
+# SPSE_PACKAGE_MANIFEST=/absolute/path/to/package-manifest.json
 
 # Opsional: lokasi output manifest Flow 1
-SPSE_OUTPUT_PACKAGE_MANIFEST=/absolute/path/to/package-manifest.json
+# SPSE_OUTPUT_PACKAGE_MANIFEST=/absolute/path/to/package-manifest.json
 
 # Browser dan screenshot panduan
-SPSE_BROWSER_CHANNEL=chrome
+# Kosong memakai Chromium yang diinstal Playwright
+SPSE_BROWSER_CHANNEL=
 SLOW_MO=300
 VIEWPORT_WIDTH=1470
 VIEWPORT_HEIGHT=900
 SPSE_GUIDE_CAPTURE=false
-SPSE_GUIDE_FLOW=flow-1
+SPSE_GUIDE_FLOW_PATTERN=flow-{flow}
 SPSE_GUIDE_DIR=/absolute/path/to/screenshots
 ```
 
@@ -118,22 +122,23 @@ Pastikan login ulang tetap menuju SPSE 2. `.env` dan JSON berisi credential haru
 
 ## Konfigurasi data test Flow 1–6
 
-Credential dan path manifest diatur melalui `.env`, sedangkan data bisnis berada di `packages/web-automation/spse/fixtures/data`. Pisahkan keduanya: jangan menulis email atau password langsung di fixture.
+Credential dan path manifest diatur melalui `.env`. Default serta konten bisnis kompleks berada di `packages/web-automation/spse/fixtures/data`; nilai sederhana Flow 5–6 seperti sesi, waktu, selection, file, dan harga juga dapat dioverride dari `.env`. Jangan menulis email atau password langsung di fixture.
 
 ### Flow 1 — data paket PPK
 
 Fixture utama: `packages/web-automation/spse/fixtures/data/non-tender.data.js`.
 
-Ubah default pada parameter `createNonTenderTestData`:
+Gunakan factory umum untuk membuat skenario tanpa memutasi object bersama:
 
 ```js
-export function createNonTenderTestData({
-  metodeLabel = 'Penunjukan Langsung',
-  jenisPengadaanLabel = 'Pengadaan Barang',
-  satkerQuery = 'DINAS KESEHATAN',
-  rupName = null,
-  rupIndex = 1,
-} = {}) {
+const data = createNonTenderTestData({
+  satkerQuery: 'DINAS KESEHATAN',
+  metodeLabel: 'Penunjukan Langsung',
+  jenisPengadaanLabel: 'Pengadaan Barang',
+  rupName: null,
+  rupIndex: 1,
+  minimumPagu: 10_000_000_000,
+});
 ```
 
 Arti field:
@@ -145,34 +150,38 @@ Arti field:
 | `satkerQuery` | Teks pencarian Satuan Kerja. Gunakan nama yang muncul di UI. |
 | `rupName` | Nama RUP exact. Isi `null` bila pemilihan dilakukan berdasarkan indeks/filter. |
 | `rupIndex` | Urutan RUP, dimulai dari `1`. Dipakai jika `rupName` tidak ditentukan. |
-| `selection.tahun` | Tahun RUP yang akan dipilih. |
+| `tahun` | Input tahun RUP yang akan dipilih; hasilnya tersedia sebagai `selection.tahun`. |
+| `kbkiItems` | Input array HPS/KBKI; hasilnya tersedia sebagai `package.kbkiItems`. |
+| `requiresKbki` | Boolean yang menentukan apakah Flow 3 wajib menambahkan KBKI kualifikasi. Default Pengadaan Barang biasa adalah `false`; skenario canonical mengaturnya `true`. |
+| `preparationDocument` | Path input dokumen persiapan; hasilnya tersedia sebagai `documents.preparation`. |
+| `notaDinasDocument` | Path input Nota Dinas PPK; hasilnya tersedia sebagai `documents.notaDinasPpk`. |
 
-Rincian HPS/KBKI dikonfigurasi melalui `package.kbkiItems`:
+Rincian HPS/KBKI dikonfigurasi melalui input top-level `kbkiItems`:
 
 ```js
 kbkiItems: [{
   jenisBarang: 'pipa',
   satuan: 'pcs',
-  harga: '10000000',
+  harga: 10_000_000,
   keterangan: 'Data test HPS',
   query: 'pipa',
   selectText: 'Pipa/ slang kain',
 }]
 ```
 
-- `harga` adalah nilai per item dalam digit tanpa pemisah ribuan.
+- `harga` adalah `number` dalam Rupiah; gunakan pemisah `_` di source agar mudah dibaca.
 - Total HPS tidak boleh melebihi pagu RUP.
 - Untuk Pengadaan Barang biasa, isi KBKI hanya jika memang diwajibkan skenario.
-- Dokumen persiapan dan Nota Dinas PPK berasal dari `documents.preparation` dan `documents.notaDinasPpk`.
+- Konfigurasikan dokumen melalui input `preparationDocument` dan `notaDinasDocument`; hasil factory tersedia sebagai `documents.preparation` dan `documents.notaDinasPpk`.
 
-Override sederhana tanpa mengubah fixture:
+Override sederhana untuk **spec Flow 1 generik** tanpa mengubah fixture (runner canonical tidak membaca kedua variable ini):
 
 ```dotenv
 SPSE_METODE_PEMILIHAN=Penunjukan Langsung
 SPSE_JENIS_PENGADAAN=Pengadaan Barang
 ```
 
-Skenario khusus Dinas Kesehatan dan HPS Rp10 miliar dikonfigurasi di fixture `nonTenderHealthConstructionData` pada `packages/web-automation/spse/fixtures/base.fixture.js`. Skenario Pejabat Pengadaan berada pada `nonTenderPPData` di file yang sama.
+Skenario canonical Dinas Kesehatan dan HPS Rp10 miliar dibuat oleh `createHealthGoodsDirectAppointmentData` dan diekspos sebagai fixture `healthGoodsDirectAppointmentData` pada `packages/web-automation/spse/fixtures/base.fixture.js`. Alias lama `nonTenderHealthConstructionData` hanya dipertahankan sementara untuk kompatibilitas. Skenario Pejabat Pengadaan berada pada `nonTenderPPData` di file yang sama.
 
 ### Flow 2 — data Kepala UKPBJ
 
@@ -212,7 +221,7 @@ qualification: {
   classification: /1075\s*-\s*Industri Makanan/i,
   administrativeIndexes: [4],
   technicalIndexes: [],
-  kbkiQuery: null,
+  kbkiQuery: 'b',
 },
 offerValidityDays: 90,
 ```
@@ -225,7 +234,7 @@ offerValidityDays: 90,
 | `businessQualification` | Kualifikasi usaha yang dipilih. |
 | `administrativeIndexes` | Indeks checkbox persyaratan administrasi. |
 | `technicalIndexes` | Indeks checkbox teknis. Gunakan `[]` untuk Pengadaan Barang biasa. |
-| `kbkiQuery` | Query KBKI. Biarkan `null` jika KBKI tidak diperlukan. |
+| `kbkiQuery` | Query KBKI. Skenario canonical memakai `b`; gunakan `null` hanya jika manifest tidak mewajibkan KBKI. |
 | `offerValidityDays` | Masa berlaku penawaran dalam hari. |
 
 Konfigurasi tambahan:
@@ -236,7 +245,7 @@ Konfigurasi tambahan:
 - `provider.query`: kata pencarian Penyedia; `provider.index` dimulai dari `0`.
 - `documents.sdp`, `documents.invitation`, dan `documents.minutes`: file PDF data test.
 
-Untuk Pengadaan Barang, fixture otomatis memakai persyaratan administrasi `[4]`, teknis `[]`, dan `kbkiQuery: null`. Tambahkan KBKI hanya untuk skenario khusus yang benar-benar mewajibkannya.
+Untuk Pengadaan Barang, fixture memakai persyaratan administrasi `[4]` dan teknis `[]`. Nilai `kbkiQuery` mengikuti `manifest.requiresKbki`: paket canonical Flow 1 bernilai `true`, mencari huruf `b`, klik **Tambah** pada hasil KBKI, lalu menyimpan; paket barang biasa yang tidak mensyaratkan KBKI menggunakan `null`.
 
 ### Flow 4 — data Penyedia
 
@@ -252,10 +261,10 @@ SPSE_PROVIDER_PASSWORD=<password-penyedia>
 
 ### Flow 5 — pertanyaan dan jawaban
 
-Fixture: `packages/web-automation/spse/fixtures/data/flow5.data.js`.
+Factory: `createFlow5Data` di `packages/web-automation/spse/fixtures/data/flow5.data.js`.
 
 ```js
-export const flow5Data = {
+const scenario = createFlow5Data({
   sessionNumber: 25,
   explanationTime: '23-08-2026 10:00',
   questions: [
@@ -269,7 +278,7 @@ export const flow5Data = {
   answers: [
     'Jawaban Pokja untuk pertanyaan pada indeks yang sama.',
   ],
-};
+});
 ```
 
 - `sessionNumber` harus sama dengan sesi default yang dipilih di bagian bawah web.
@@ -279,12 +288,22 @@ export const flow5Data = {
 - Jumlah `answers` harus sama dengan jumlah `questions`; jawaban indeks `0` menjawab pertanyaan indeks `0`.
 - Gunakan teks yang relevan dengan jenis paket. Jangan memakai jawaban konstruksi untuk paket Pengadaan Barang.
 
+Override yang tersedia tanpa mengubah source:
+
+| Environment | Contoh | Kegunaan |
+| --- | --- | --- |
+| `SPSE_FLOW5_SESSION_NUMBER` | `25` | Sesi default latihan. |
+| `SPSE_FLOW5_EXPLANATION_TIME` | `23-08-2026 10:00` | Waktu tahap Pemberian Penjelasan. |
+| `SPSE_FLOW5_QUESTION_COUNT` | `5` | Banyak pertanyaan/jawaban yang digunakan dari fixture. |
+| `SPSE_FLOW5_ATTACHMENT_COUNT` | `2` | Banyak pertanyaan awal yang memakai lampiran. |
+| `SPSE_FLOW5_ATTACHMENT_FILE` | `/data/lampiran.pdf` | File PDF/ZIP pengganti untuk lampiran. |
+
 ### Flow 6 — pilihan Data Kualifikasi
 
-Fixture: `packages/web-automation/spse/fixtures/data/flow6.data.js`.
+Factory: `createFlow6Data` di `packages/web-automation/spse/fixtures/data/flow6.data.js`.
 
 ```js
-export const flow6Data = {
+const scenario = createFlow6Data({
   sessionNumber: 25,
   offerTime: '24-08-2026 10:00',
   qualification: {
@@ -297,8 +316,12 @@ export const flow6Data = {
   },
   offer: {
     technicalFile: testDocument,
+    priceRequirementFiles: [testDocument, null],
+    priceBeforeVat: 9_000_000_000,
+    vatPercent: 11,
+    tkdnPercent: 20,
   },
-};
+});
 ```
 
 Cara memilih data pada setiap kelompok:
@@ -315,6 +338,18 @@ ongoingWork: [],        // tidak memilih baris
 - `offerTime` harus berada pada jadwal Upload Dokumen Penawaran.
 - `otherRequirementFile` dan `technicalFile` harus menunjuk file test yang tersedia.
 - Jalankan `flow6-inspect.spec.js` dahulu ketika struktur form atau data SIKaP/VMS berubah.
+
+`technicalFile` dapat berupa satu file untuk semua persyaratan, array sesuai urutan kontrol, atau pemetaan agar file berbeda mudah dipelihara:
+
+```js
+technicalFile: {
+  defaultFile: testDocument,
+  byRequirementId: { 101: technicalZip },
+  byRequirementName: { Brosur: brochurePdf },
+}
+```
+
+Semua field Flow 6 juga dapat dioverride dari `.env` dengan awalan `SPSE_FLOW6_`. Daftar lengkap dan format selection (`all`, `none`, `0,2`, atau `[0,2]`) tersedia di `.env.example`.
 
 ### Checklist sebelum eksekusi
 
@@ -360,7 +395,7 @@ Tahapan:
 6. Pilih pejabat tujuan dan kirim paket.
 7. Validasi notifikasi penyimpanan dan tulis manifest.
 
-Default dapat diubah dengan `SPSE_METODE_PEMILIHAN` dan `SPSE_JENIS_PENGADAAN`. Skenario Dinas Kesehatan, Pengadaan Barang, Penunjukan Langsung, pagu di atas Rp10 miliar, dan HPS Rp10 miliar:
+Default spec generik dapat diubah dengan `SPSE_METODE_PEMILIHAN` dan `SPSE_JENIS_PENGADAAN`. Skenario canonical runner—Dinas Kesehatan, Pengadaan Barang, Penunjukan Langsung, pagu di atas Rp10 miliar, dan HPS Rp10 miliar—menggunakan:
 
 ```bash
 npm run test:spse:headed -- \
@@ -382,9 +417,11 @@ Setelah berhasil, salin path manifest dari hasil test ke `SPSE_PACKAGE_MANIFEST`
 
 ```bash
 npm run test:spse:headed -- \
-  spse/tests/e2e/approve-non-tender-ukpbj.spec.js \
+  spse/tests/e2e/approve-health-construction-ukpbj.spec.js \
   --project=spse --workers=1
 ```
+
+Gunakan `approve-non-tender-ukpbj.spec.js` hanya untuk skenario Flow 1 generik; runner canonical memakai spec di atas agar jenis pengadaan, Satker, HPS, upload, dan bukti penerusan ikut divalidasi.
 
 1. Login sebagai Kepala UKPBJ.
 2. Buka paket berdasarkan ID dan nama exact dari manifest.
@@ -427,7 +464,7 @@ npm run test:spse:headed -- \
 ```
 
 1. Login sebagai Penyedia.
-2. Buka **Daftar Paket → Non Tender**.
+2. Buka **Beranda → Non Tender**.
 3. Cari dan buka paket berdasarkan manifest.
 4. Baca Pakta Integritas lalu klik **Setuju & Ikut Paket**.
 5. Kembali ke Beranda/Non Tender dan validasi paket sudah masuk.
@@ -457,9 +494,7 @@ Pertanyaan, jawaban, sesi, dan waktu dapat diubah di `packages/web-automation/sp
 Inspeksi form tanpa mengirim:
 
 ```bash
-npm run test:spse:headed -- \
-  spse/tests/e2e/flow6-inspect.spec.js \
-  --project=spse --workers=1
+npm run test:spse:flow6:inspect -- --headed
 ```
 
 Kirim Data Kualifikasi terlebih dahulu:
@@ -488,7 +523,7 @@ npm run test:spse:headed -- \
 ```
 
 1. Isi masa berlaku Surat Penawaran (fixture default: 90 hari) dan setujui.
-2. Upload seluruh dokumen teknis (fixture default: enam persyaratan menggunakan `datatest.pdf`).
+2. Upload setiap persyaratan teknis yang tampil; default memakai `datatest.pdf`, sedangkan fixture dapat memetakan file per ID/nama persyaratan.
 3. Isi harga sebelum PPN; sistem menghitung PPN 11% dan menolak nilai di atas HPS.
 4. Isi TKDN/PDN 0–100% dan upload lampiran harga bila diperlukan.
 5. Simpan, klik **Kirim Penawaran**, lalu validasi status Surat Penawaran, Teknis, dan Harga menjadi **Sudah Kirim**.
@@ -499,17 +534,29 @@ Pada eksekusi staging terbaru, nilai sebelum PPN Rp9.000.000.000 + PPN 11% Rp990
 
 ## Menjalankan Flow 1–6 berurutan
 
-Jalankan Flow 1, isi `SPSE_PACKAGE_MANIFEST`, kemudian jalankan Flow 2–6 satu per satu:
+Gunakan runner serial agar seluruh flow memakai satu manifest yang sama dan
+selalu dijalankan dengan satu worker tanpa retry level test:
 
 ```bash
-npm run test:spse:headed -- spse/tests/e2e/create-health-construction-non-tender.spec.js --project=spse --workers=1
-npm run test:spse:headed -- spse/tests/e2e/approve-health-construction-ukpbj.spec.js --project=spse --workers=1
-npm run test:spse:headed -- spse/tests/e2e/approve-non-tender-pokja.spec.js --project=spse --workers=1
-npm run test:spse:headed -- spse/tests/e2e/accept-non-tender-provider.spec.js --project=spse --workers=1
-npm run test:spse:headed -- spse/tests/e2e/flow5-explanation.spec.js --project=spse --workers=1
-npm run test:spse:headed -- spse/tests/e2e/flow6-qualification.spec.js --project=spse --workers=1
-npm run test:spse:headed -- spse/tests/e2e/flow6-offer.spec.js --project=spse --workers=1
+npm run test:spse:flow1-6 -- --headed
 ```
+
+Runner ini memakai skenario Flow 1 Dinas Kesehatan, Pengadaan Barang,
+Penunjukan Langsung, pagu di atas Rp10 miliar, dan HPS Rp10 miliar.
+
+Runner membuat manifest baru ketika dimulai dari Flow 1. Untuk melanjutkan
+paket yang sudah ada, berikan manifest dan rentang flow:
+
+```bash
+npm run test:spse:flow1-6 -- \
+  --from 3 --to 6 \
+  --manifest /absolute/path/package-manifest.json \
+  --headed
+```
+
+Gunakan `--dry-run` untuk melihat urutan tujuh spec tanpa menjalankan browser.
+Daftar opsi lengkap tersedia melalui
+`npm run test:spse:flow1-6 -- --help`.
 
 ## Screenshot, tools, dan troubleshooting
 
@@ -517,15 +564,25 @@ Aktifkan screenshot step-by-step:
 
 ```dotenv
 SPSE_GUIDE_CAPTURE=true
-SPSE_GUIDE_FLOW=flow-1
+SPSE_GUIDE_FLOW_PATTERN=flow-{flow}
 SPSE_GUIDE_DIR=/absolute/path/to/output
 ```
 
+Runner memberi nama folder `flow-1` sampai `flow-6` secara otomatis. Setiap langkah menyimpan screenshot viewport beranotasi untuk panduan klik/input dan screenshot `fullImage` bersih untuk pemeriksaan halaman penuh. Jika menjalankan satu spec secara langsung, isi `SPSE_GUIDE_FLOW=flow-3` sesuai kebutuhan.
+
+Opsi lanjutan: `SPSE_DEBUG_FLOW3=true` menyimpan screenshot debug Flow 3 dan `SPSE_USER_AGENT` mengganti user agent browser. Gunakan hanya ketika diperlukan karena opsi tersebut bukan bagian dari runner normal.
+
+Pada CI, simpan username/password dan credential lain sebagai **Secrets**, sedangkan konfigurasi non-sensitif seperti `ENV`, nama/index Pokja, viewport, dan waktu skenario dapat disimpan sebagai **Variables**. Petakan keduanya ke nama environment `SPSE_*` yang sama dengan `.env.example`; jangan commit nilainya ke repository.
+
 | Perintah | Kegunaan |
 | --- | --- |
-| `npm run lint:spse` | ESLint source web automation. |
-| `npm run test:spse` | Test headless. |
-| `npm run test:spse:headed` | Test dengan browser terlihat. |
+| `npm run lint:spse:check` | ESLint source SPSE tanpa mengubah source. |
+| `npm run lint:spse:fix` | Terapkan autofix pada source SPSE yang masuk scope lint. |
+| `npm run test:spse -- <spec>` | Menjalankan spec SPSE terpilih secara headless. Untuk alur stateful penuh gunakan runner serial. |
+| `npm run test:spse:unit` | Unit test factory data dan state machine manifest. |
+| `npm run test:spse:flow1-6 -- --dry-run` | Validasi urutan runner tanpa membuka browser. |
+| `npm run test:spse:flow6:inspect -- --headed` | Inspeksi form Flow 6 tanpa mengirim penawaran. |
+| `npm run test:spse:headed -- <file-spec>` | Menjalankan spec SPSE terpilih dengan browser terlihat. Jangan jalankan command headed tanpa filter karena akan mengumpulkan banyak flow stateful. |
 | `npm run test:spse:ui` | Playwright UI. |
 | `npm run report:spse` | Membuka report terbaru. |
 | `npm run codegen:spse` | Playwright code generator. |

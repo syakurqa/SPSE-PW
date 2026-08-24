@@ -267,9 +267,8 @@ export class PokjaApprovalPage {
     });
     await qualificationLink.click();
     if (await this.isQualificationConfigured(qualification)) {
-      await this.completeOpenKbkiDialog();
+      await this.completeOpenKbkiDialog(qualification.kbkiQuery);
       await this.clickSave();
-      await this.page.waitForTimeout(1000);
       await this.clickBack();
       return;
     }
@@ -292,7 +291,7 @@ export class PokjaApprovalPage {
     );
     if (qualification.kbkiQuery && !await this.hasConfiguredKbki()) {
       await this.openKbkiDialog();
-      await this.completeOpenKbkiDialog();
+      await this.completeOpenKbkiDialog(qualification.kbkiQuery);
       if (process.env.SPSE_DEBUG_FLOW3 === 'true') {
         await this.page.screenshot({
           path: '/tmp/flow3-kbki-modal.png',
@@ -300,9 +299,8 @@ export class PokjaApprovalPage {
         });
       }
     }
-    await this.completeOpenKbkiDialog();
+    await this.completeOpenKbkiDialog(qualification.kbkiQuery);
     await this.clickSave();
-    await this.page.waitForTimeout(2000);
     if (!await this.isQualificationConfigured(qualification)) {
       const kbkiTableTextAfterSave = (await this.page.getByText(
         'Tabel Data KBKI',
@@ -384,7 +382,7 @@ export class PokjaApprovalPage {
     }
   }
 
-  async completeOpenKbkiDialog() {
+  async completeOpenKbkiDialog(query = 'b') {
     const kbkiDialog = this.page.locator('#kbkiModal');
     if (!await kbkiDialog.isVisible().catch(() => false)) {
       return false;
@@ -420,7 +418,7 @@ export class PokjaApprovalPage {
       let visibleOptionFound = false;
       for (let attempt = 1; attempt <= 3 && !visibleOptionFound; attempt++) {
         await liveSearch.fill('');
-        await liveSearch.pressSequentially('b', { delay: 150 });
+        await liveSearch.pressSequentially(query || 'b', { delay: 150 });
         visibleOptionFound = await descriptionOption.waitFor({
           state: 'visible',
           timeout: 20000,
@@ -463,7 +461,7 @@ export class PokjaApprovalPage {
             (menu) => menu.outerHTML.slice(0, 3000)
           ));
           throw new Error(
-            'Pilihan Deskripsi KBKI tidak muncul setelah mengetik "b". '
+            `Pilihan Deskripsi KBKI tidak muncul setelah mengetik "${query || 'b'}". `
             + `Native options (${nativeOptions.length}): ${JSON.stringify(nativeOptions)}. `
             + `Dropdown terbuka: ${JSON.stringify(openDropdownHtml)}`
           );
@@ -477,7 +475,7 @@ export class PokjaApprovalPage {
       const select2Search = this.page.locator(
         '.select2-container--open input.select2-search__field'
       ).last();
-      await select2Search.fill('b');
+      await select2Search.fill(query || 'b');
       const descriptionOption = this.page.locator(
         '.select2-results__option[role="option"], .select2-results__option'
       ).filter({ hasNotText: /Pilih Deskripsi|No results|Tidak ada|Mencari|Searching/i, }).first();
@@ -524,7 +522,9 @@ export class PokjaApprovalPage {
 
   async isQualificationConfigured(qualification) {
     const mainText = (await this.page.locator('#main').textContent()) || '';
-    const classificationPresent = mainText.includes('1075');
+    const classificationPresent = qualification.classification instanceof RegExp
+      ? qualification.classification.test(mainText)
+      : mainText.includes(String(qualification.classification));
     if (!classificationPresent) {
       return false;
     }

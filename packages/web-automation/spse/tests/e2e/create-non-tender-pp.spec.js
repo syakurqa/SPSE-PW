@@ -20,9 +20,17 @@ test.describe('Flow 1 Khusus PP', () => {
     await loginPage.login(
       userPPKPP.username,
       userPPKPP.password,
-      spseBaseUrl
+      spseBaseUrl,
+      { organization: nonTenderPPData.selection.satkerQuery }
     );
-    await nonTenderPage.navigateToBuatPaket();
+    await nonTenderPage.navigateToBuatPaket(
+      userPPKPP.username,
+      userPPKPP.password,
+      {
+        baseUrl: spseBaseUrl,
+        organization: nonTenderPPData.selection.satkerQuery,
+      }
+    );
     await nonTenderPage.selectSatkerAndMetode(nonTenderPPData.selection);
     const selectedRup = await nonTenderPage.selectRencanaAndCreatePaket({
       rupName: nonTenderPPData.selection.rupName,
@@ -63,6 +71,12 @@ test.describe('Flow 1 Khusus PP', () => {
       satker: nonTenderPPData.selection.satkerQuery,
       rupName: selectedRup.nama,
       rupMethod: selectedRup.metodeLabel,
+      rupPagu: selectedRup.pagu,
+      hps: nonTenderPPData.package.kbkiItems.reduce(
+        (total, item) => total + item.harga,
+        0
+      ),
+      requiresKbki: nonTenderPPData.package.requiresKbki,
       assignedRole: submission.assignedRole,
       status: submission.status,
       createdAt: new Date().toISOString(),

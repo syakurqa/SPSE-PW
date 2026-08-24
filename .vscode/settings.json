@@ -14,6 +14,9 @@
         "editor.tabSize": 2
     },
     "javascript.preferences.importModuleSpecifierEnding": "js",
+    "playwright.configs": [
+        "packages/web-automation/playwright.config.js"
+    ],
     "playwright.env": {
         "ENV": "SIT",
         "DEBUG_LOG": true,

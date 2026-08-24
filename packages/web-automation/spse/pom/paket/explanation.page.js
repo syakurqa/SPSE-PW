@@ -23,14 +23,36 @@ export class ExplanationPage {
     });
   }
 
-  async sendQuestion(question, number) {
-    const countersBefore = await this.readCounters();
-    if (countersBefore.questions !== number - 1) {
-      throw new Error(
-        `Pertanyaan ${number} tidak aman dikirim: counter aktual `
-        + `${countersBefore.questions}, seharusnya ${number - 1}.`
-      );
+  async hasStoredQuestion(question) {
+    return this.getQuestionPanel(question).isVisible({ timeout: 1000 })
+      .catch(() => false);
+  }
+
+  async hasStoredAnswer(question, answer) {
+    if (!await this.hasStoredQuestion(question)) {
+      return false;
     }
+    return this.getQuestionPanel(question).getByText(answer, { exact: true })
+      .isVisible({ timeout: 1000 }).catch(() => false);
+  }
+
+  async ensureQuestion(question, label) {
+    if (await this.hasStoredQuestion(question)) {
+      return {
+        created: false,
+        counters: await this.readCounters(),
+      };
+    }
+    return {
+      created: true,
+      counters: await this.sendQuestion(question, label),
+    };
+  }
+
+  async sendQuestion(question, label) {
+    const countersBefore = await this.readCounters();
+    const number = label || countersBefore.questions + 1;
+    const expectedQuestionCount = countersBefore.questions + 1;
     const sendLink = this.page.getByRole('link', {
       name: 'Kirim Pertanyaan',
       exact: true,
@@ -81,7 +103,7 @@ export class ExplanationPage {
       state: 'hidden',
       timeout: 30000
     });
-    return this.waitForQuestionStored(question, number);
+    return this.waitForQuestionStored(question, expectedQuestionCount);
   }
 
   async waitForUploadReady(dialog, attachmentPath, number) {
@@ -178,7 +200,7 @@ export class ExplanationPage {
       .locator('xpath=parent::*');
   }
 
-  async waitForQuestionStored(question, expectedQuestionCount) {
+  async waitForQuestionStored(question, expectedQuestionCount = null) {
     const panel = this.getQuestionPanel(question);
     await panel.waitFor({
       state: 'visible',
@@ -190,24 +212,35 @@ export class ExplanationPage {
         timeout: 30000,
       });
     }
-    await this.waitForCounter({ questions: expectedQuestionCount, });
+    if (expectedQuestionCount !== null) {
+      await this.waitForCounter({ questions: expectedQuestionCount, });
+    }
     return this.readCounters();
   }
 
   async verifyStoredQuestions(questions) {
     for (const question of questions) {
-      await this.waitForQuestionStored(question, questions.length);
+      await this.waitForQuestionStored(question);
     }
   }
 
-  async sendAnswer(question, answer, number) {
-    const countersBefore = await this.readCounters();
-    if (countersBefore.explanations !== number - 1) {
-      throw new Error(
-        `Penjelasan ${number} tidak aman dikirim: counter aktual `
-        + `${countersBefore.explanations}, seharusnya ${number - 1}.`
-      );
+  async ensureAnswer(question, answer, label) {
+    if (await this.hasStoredAnswer(question, answer)) {
+      return {
+        created: false,
+        counters: await this.readCounters(),
+      };
     }
+    return {
+      created: true,
+      counters: await this.sendAnswer(question, answer, label),
+    };
+  }
+
+  async sendAnswer(question, answer, label) {
+    const countersBefore = await this.readCounters();
+    const number = label || countersBefore.explanations + 1;
+    const expectedExplanationCount = countersBefore.explanations + 1;
     const questionPanel = this.getQuestionPanel(question);
     await questionPanel.waitFor({
       state: 'visible',
@@ -258,7 +291,7 @@ export class ExplanationPage {
     });
     await this.waitForCounter({
       questions: countersBefore.questions,
-      explanations: number,
+      explanations: expectedExplanationCount,
     });
     return this.readCounters();
   }

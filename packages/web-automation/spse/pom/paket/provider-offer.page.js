@@ -5,6 +5,10 @@ import { captureGuideStep } from '../../utils/guide-capture.js';
 
 const ALLOWED_UPLOAD_EXTENSIONS = new Set(['.pdf', '.zip']);
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export class ProviderOfferPage {
   constructor(page) {
     this.page = page;
@@ -49,7 +53,19 @@ export class ProviderOfferPage {
     );
     if (allOptionValue) {
       await lengthSelect.selectOption(allOptionValue);
-      await this.page.waitForTimeout(250);
+      const processing = scope.locator(
+        '.dataTables_processing:visible, [id$="_processing"]:visible'
+      ).first();
+      if (await processing.isVisible({ timeout: 500 }).catch(() => false)) {
+        await processing.waitFor({
+          state: 'hidden',
+          timeout: 15000
+        });
+      }
+      await lengthSelect.locator('option:checked').filter({ hasText: /^(Semua|All)$/i, }).waitFor({
+        state: 'attached',
+        timeout: 5000
+      });
     }
   }
 
@@ -139,6 +155,38 @@ export class ProviderOfferPage {
     return crypto.createHash('sha256')
       .update(fs.readFileSync(filePath))
       .digest('hex');
+  }
+
+  exactDownloadLink(fileList, fileName) {
+    const exactFileName = new RegExp(
+      `^\\s*${escapeRegExp(fileName)}\\s*$`
+    );
+    return fileList.getByRole('link', {
+      name: fileName,
+      exact: true,
+    }).or(fileList.locator('a[href]').filter({ hasText: exactFileName, }))
+      .first();
+  }
+
+  async verifyUploadedFile(downloadLink, filePath, label) {
+    const downloaded = await this.downloadEvidence(downloadLink, label);
+    const expectedSize = fs.statSync(filePath).size;
+    const expectedSha256 = this.hashFile(filePath);
+    if (downloaded.size !== expectedSize
+      || downloaded.sha256 !== expectedSha256) {
+      throw new Error(
+        `${label} di server tidak sama dengan fixture lokal. `
+        + `Expected size/hash ${expectedSize}/${expectedSha256}, `
+        + `aktual ${downloaded.size}/${downloaded.sha256}.`
+      );
+    }
+    return {
+      size: downloaded.size,
+      sha256: downloaded.sha256,
+      downloadUrl: downloaded.url,
+      downloadedFileName: downloaded.fileName,
+      downloadVerified: true,
+    };
   }
 
   async readUploadEvidence(scope, fileName) {
@@ -308,25 +356,40 @@ export class ProviderOfferPage {
     };
   }
 
-  async assertQualificationSent() {
+  async readQualificationStatus() {
     const qualificationRow = this.page.locator('#main tr').filter({ hasText: 'Dokumen Kualifikasi', }).first();
     await qualificationRow.waitFor({
       state: 'visible',
       timeout: 30000
     });
-    const text = (await qualificationRow.innerText()).replace(/\s+/g, ' ').trim();
-    if (/Status\s*:\s*Belum dikirim/i.test(text)) {
-      throw new Error(`Data Kualifikasi belum terkirim. Aktual: ${text}`);
+    return (await qualificationRow.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  hasQualificationBeenSent(statusText) {
+    if (/Status\s*:\s*Belum dikirim/i.test(statusText)) {
+      return false;
     }
-    if (!/Status\s*:\s*(?:Sudah\s+dikirim|Terkirim|Dikirim)/i.test(text)) {
-      throw new Error(`Status Data Kualifikasi tidak dikenali. Aktual: ${text}`);
-    }
-    if (!/(Lihat Data|Ubah Data|Batal Kirim)/i.test(text)) {
+    if (!/Status\s*:\s*(?:Sudah\s+dikirim|Terkirim|Dikirim)/i.test(statusText)) {
       throw new Error(
-        `Kontrol pascakirim Data Kualifikasi tidak tersedia. Aktual: ${text}`
+        `Status Data Kualifikasi tidak dikenali. Aktual: ${statusText}`
       );
     }
-    return text;
+    if (!/(Lihat Data|Ubah Data|Batal Kirim)/i.test(statusText)) {
+      throw new Error(
+        `Kontrol pascakirim Data Kualifikasi tidak tersedia. Aktual: ${statusText}`
+      );
+    }
+    return true;
+  }
+
+  async assertQualificationSent() {
+    const statusText = await this.readQualificationStatus();
+    if (!this.hasQualificationBeenSent(statusText)) {
+      throw new Error(
+        `Data Kualifikasi belum terkirim. Aktual: ${statusText}`
+      );
+    }
+    return statusText;
   }
 
   async openOfferFromPackage() {
@@ -390,12 +453,19 @@ export class ProviderOfferPage {
   }
 
   assertOfferLetterSent(statusText) {
-    if (/Surat Penawaran\s*:\s*Belum Kirim/i.test(statusText)) {
+    if (!this.hasOfferLetterBeenSent(statusText)) {
       throw new Error(`Surat Penawaran belum terkirim. Aktual: ${statusText}`);
+    }
+  }
+
+  hasOfferLetterBeenSent(statusText) {
+    if (/Surat Penawaran\s*:\s*Belum Kirim/i.test(statusText)) {
+      return false;
     }
     if (!/Surat Penawaran\s*:\s*(?:Sudah|Terkirim|Setuju)/i.test(statusText)) {
       throw new Error(`Status Surat Penawaran tidak dikenali: ${statusText}`);
     }
+    return true;
   }
 
   async openTechnicalOffer(manifest) {
@@ -417,9 +487,29 @@ export class ProviderOfferPage {
     }
   }
 
-  async uploadAllTechnicalFiles(filePath) {
-    this.assertUploadFile(filePath);
-    const fileName = path.basename(filePath);
+  resolveTechnicalFile(fileConfig, {
+    requirementId, requirement, index
+  }) {
+    if (typeof fileConfig === 'string') {
+      return fileConfig;
+    }
+    if (Array.isArray(fileConfig)) {
+      return fileConfig[index];
+    }
+    if (fileConfig && typeof fileConfig === 'object') {
+      const byRequirementId = fileConfig.byRequirementId || {};
+      const byRequirementName = fileConfig.byRequirementName || {};
+      const matchingName = Object.entries(byRequirementName).find(
+        ([name]) => requirement.toLowerCase().includes(name.toLowerCase())
+      );
+      return byRequirementId[requirementId]
+        || matchingName?.[1]
+        || fileConfig.defaultFile;
+    }
+    return null;
+  }
+
+  async uploadAllTechnicalFiles(fileConfig) {
     const inputs = this.page.locator('input[type="file"][id^="upload-"]');
     const count = await inputs.count();
     if (count === 0) {
@@ -438,11 +528,26 @@ export class ProviderOfferPage {
       const requirement = (await card.locator('.card-header').innerText()
         .catch(() => `Persyaratan Teknis ${index + 1}`)).replace(/\s+/g, ' ')
         .trim();
+      const filePath = this.resolveTechnicalFile(fileConfig, {
+        requirementId,
+        requirement,
+        index,
+      });
+      if (!filePath) {
+        throw new Error(
+          `File untuk persyaratan teknis "${requirement}" belum dikonfigurasi.`
+        );
+      }
+      this.assertUploadFile(filePath);
+      const fileName = path.basename(filePath);
       const fileList = this.page.locator(`#files-${requirementId}`);
-      const existing = fileList.locator('li').filter({ hasText: fileName, })
-        .first();
+      const existingDownloadLink = this.exactDownloadLink(
+        fileList,
+        fileName
+      );
       let responseEvidence = 'existing';
-      if (!await existing.isVisible({ timeout: 1000 }).catch(() => false)) {
+      if (!await existingDownloadLink.isVisible({ timeout: 1000, })
+        .catch(() => false)) {
         const responsePromise = this.page.waitForResponse((response) => (
           response.request().method() === 'POST'
           && /submitpenawaranteknis/i.test(response.url())
@@ -463,37 +568,41 @@ export class ProviderOfferPage {
         }
         responseEvidence = `${response.request().method()} ${response.status()} ${response.url()}`;
       }
-      const savedFile = fileList.locator('li').filter({ hasText: fileName, })
-        .first();
-      await savedFile.waitFor({
-        state: 'visible',
-        timeout: 30000
-      });
-      const downloadLink = savedFile.locator('a[href]').first();
+      const downloadLink = this.exactDownloadLink(fileList, fileName);
       await downloadLink.waitFor({
         state: 'visible',
         timeout: 10000
       });
+      const verifiedDownload = await this.verifyUploadedFile(
+        downloadLink,
+        filePath,
+        `Dokumen Teknis ${requirement}`
+      );
       uploads.push({
         requirementId,
         requirement,
         fileName,
-        size: fs.statSync(filePath).size,
-        sha256: this.hashFile(filePath),
         response: responseEvidence,
-        downloadUrl: await downloadLink.getAttribute('href'),
+        ...verifiedDownload,
       });
     }
     return uploads;
   }
 
   assertTechnicalOfferSent(statusText) {
-    if (/Dokumen Teknis\s*:\s*Belum Kirim/i.test(statusText)) {
+    if (!this.hasTechnicalOfferBeenSent(statusText)) {
       throw new Error(`Dokumen Teknis belum terkirim. Aktual: ${statusText}`);
+    }
+  }
+
+  hasTechnicalOfferBeenSent(statusText) {
+    if (/Dokumen Teknis\s*:\s*Belum Kirim/i.test(statusText)) {
+      return false;
     }
     if (!/Dokumen Teknis\s*:\s*(?:Sudah|Terkirim)/i.test(statusText)) {
       throw new Error(`Status Dokumen Teknis tidak dikenali: ${statusText}`);
     }
+    return true;
   }
 
   async openPriceOffer(manifest) {
@@ -554,10 +663,13 @@ export class ProviderOfferPage {
         .catch(() => `Persyaratan Harga ${index + 1}`)).replace(/\s+/g, ' ')
         .trim();
       const fileList = this.page.locator(`#files-${requirementId}`);
-      const existing = fileList.locator('li').filter({ hasText: fileName, })
-        .first();
+      const existingDownloadLink = this.exactDownloadLink(
+        fileList,
+        fileName
+      );
       let responseEvidence = 'existing';
-      if (!await existing.isVisible({ timeout: 1000 }).catch(() => false)) {
+      if (!await existingDownloadLink.isVisible({ timeout: 1000, })
+        .catch(() => false)) {
         const responsePromise = this.page.waitForResponse((response) => (
           response.request().method() === 'POST'
           && /uploadpenawaranhargakonstruksi/i.test(response.url())
@@ -577,25 +689,22 @@ export class ProviderOfferPage {
         }
         responseEvidence = `${response.request().method()} ${response.status()} ${response.url()}`;
       }
-      const savedFile = fileList.locator('li').filter({ hasText: fileName, })
-        .first();
-      await savedFile.waitFor({
-        state: 'visible',
-        timeout: 30000
-      });
-      const downloadLink = savedFile.locator('a[href]').first();
+      const downloadLink = this.exactDownloadLink(fileList, fileName);
       await downloadLink.waitFor({
         state: 'visible',
         timeout: 10000
       });
+      const verifiedDownload = await this.verifyUploadedFile(
+        downloadLink,
+        filePath,
+        `Lampiran Harga ${requirement}`
+      );
       uploads.push({
         requirementId,
         requirement,
         fileName,
-        size: fs.statSync(filePath).size,
-        sha256: this.hashFile(filePath),
         response: responseEvidence,
-        downloadUrl: await downloadLink.getAttribute('href'),
+        ...verifiedDownload,
       });
     }
     return uploads;
@@ -623,6 +732,54 @@ export class ProviderOfferPage {
       }
       return instance.getData().map((row) => ({ ...row }));
     });
+  }
+
+  async assertSavedPrice({
+    priceBeforeVat,
+    vatPercent,
+    tkdnPercent,
+  }) {
+    const expectedTax = priceBeforeVat * vatPercent / 100;
+    const expectedTotal = priceBeforeVat + expectedTax;
+    const expectedPdn = expectedTotal * tkdnPercent / 100;
+    const saved = (await this.readPriceTable())[0];
+    if (Number(saved.harga) !== priceBeforeVat
+      || Number(saved.pajak) !== vatPercent
+      || Number(saved.total) !== expectedTax
+      || Number(saved.total_harga) !== expectedTotal) {
+      throw new Error(
+        `Penawaran Harga tidak persisten setelah reload: ${JSON.stringify(saved)}`
+      );
+    }
+
+    const savedTkdn = Number(
+      await this.page.locator('#inputPdnSingle').inputValue()
+    );
+    if (savedTkdn !== tkdnPercent) {
+      throw new Error(
+        `Nilai TKDN tidak persisten setelah reload. Diharapkan ${tkdnPercent}, aktual ${savedTkdn}.`
+      );
+    }
+    const savedPdn = Number(
+      await this.page.locator('#totalpdni').inputValue()
+    );
+    if (savedPdn !== expectedPdn) {
+      throw new Error(
+        `Total PDN tidak persisten. Diharapkan ${expectedPdn}, aktual ${savedPdn}.`
+      );
+    }
+    return {
+      priceBeforeVat,
+      vatPercent,
+      tax: expectedTax,
+      total: expectedTotal,
+      tkdnPercent,
+      totalPdn: expectedPdn,
+      hps: Number(await this.page.locator('#nilai_hps_paket').inputValue()),
+      savedRow: saved,
+      tkdnUiValueAfterReload: savedTkdn,
+      tkdnUiPersisted: true,
+    };
   }
 
   async fillAndSavePrice({
@@ -731,41 +888,27 @@ export class ProviderOfferPage {
       state: 'visible',
       timeout: 30000
     });
-    const saved = (await this.readPriceTable())[0];
-    if (Number(saved.harga) !== priceBeforeVat
-      || Number(saved.pajak) !== vatPercent
-      || Number(saved.total_harga) !== expectedTotal) {
-      throw new Error(
-        `Penawaran Harga tidak persisten setelah reload: ${JSON.stringify(saved)}`
-      );
-    }
-    const savedTkdn = Number(await this.page.locator('#inputPdnSingle').inputValue());
-    if (![0, tkdnPercent].includes(savedTkdn)) {
-      throw new Error(
-        `Nilai TKDN tidak persisten setelah reload. Diharapkan ${tkdnPercent}, aktual ${savedTkdn}.`
-      );
-    }
-    return {
+    const persisted = await this.assertSavedPrice({
       priceBeforeVat,
       vatPercent,
-      tax: expectedTax,
-      total: expectedTotal,
       tkdnPercent,
-      totalPdn: expectedPdn,
+    });
+    return {
+      ...persisted,
       submittedPdn,
-      hps,
-      savedRow: saved,
-      tkdnUiValueAfterReload: savedTkdn,
-      tkdnUiPersisted: savedTkdn === tkdnPercent,
-      tkdnPersistenceNote: savedTkdn === tkdnPercent
-        ? null
-        : 'Server menerima payload Total PDN, tetapi input persentase PDN kembali 0 setelah reload.',
     };
   }
 
   assertPriceOfferSent(statusText, expectedTotal) {
-    if (/Dokumen Harga\s*:\s*Belum Kirim/i.test(statusText)) {
+    if (!this.hasPriceOfferBeenSent(statusText, expectedTotal)) {
       throw new Error(`Dokumen Harga belum terkirim. Aktual: ${statusText}`);
+    }
+    return expectedTotal;
+  }
+
+  hasPriceOfferBeenSent(statusText, expectedTotal) {
+    if (/Dokumen Harga\s*:\s*Belum Kirim/i.test(statusText)) {
+      return false;
     }
     if (!/Dokumen Harga\s*:\s*(?:Sudah|Terkirim)/i.test(statusText)) {
       throw new Error(`Status Dokumen Harga tidak dikenali: ${statusText}`);
@@ -781,7 +924,7 @@ export class ProviderOfferPage {
         `Total Penawaran tidak sesuai. Diharapkan ${expectedTotal}, aktual ${actualTotal}. Status: ${statusText}`
       );
     }
-    return actualTotal;
+    return true;
   }
 
   assertAllOfferComponentsSent(statusText, expectedTotal) {
@@ -817,6 +960,7 @@ export class ProviderOfferPage {
   }
 
   async collectFinalSubmissionEvidence(expectedTotal) {
+    const finalSubmission = await this.submitFinalOfferIfRequired();
     const status = await this.readOfferStatus();
     const total = this.assertAllOfferComponentsSent(status, expectedTotal);
     const receiptLink = this.page.getByRole('link', { name: /Tanda Terima Elektronik|Bukti Penyampaian|\bTTE\b/i, }).first();
@@ -844,11 +988,41 @@ export class ProviderOfferPage {
     return {
       status,
       total,
+      finalSubmission,
       receipt,
       priceDocument: await this.downloadEvidence(
         priceDownload,
         'Penawaran Harga'
       ),
+    };
+  }
+
+  async submitFinalOfferIfRequired() {
+    const submitButton = this.page.getByRole('button', { name: /^Kirim Dokumen Penawaran\s*&\s*Kualifikasi$/i, }).or(this.page.getByRole('link', { name: /^Kirim Dokumen Penawaran\s*&\s*Kualifikasi$/i, })).first();
+    if (!await submitButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      return {
+        mode: 'COMPONENT_BASED',
+        action: 'NOT_REQUIRED_BY_CURRENT_UI',
+      };
+    }
+
+    await captureGuideStep(this.page, {
+      instruction: 'Klik Kirim Dokumen Penawaran & Kualifikasi',
+      target: submitButton,
+      expected: 'Sistem menyimpan pengiriman akhir dan menerbitkan bukti.',
+    });
+    await submitButton.click();
+
+    const confirmation = this.page.locator(
+      '.modal.show button, [role="dialog"] button'
+    ).filter({ hasText: /^(?:Kirim|Ya|Setuju|OK)$/i }).last();
+    if (await confirmation.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await confirmation.click();
+    }
+    await this.page.waitForLoadState('domcontentloaded').catch(() => null);
+    return {
+      mode: 'EXPLICIT_FINAL_SUBMIT',
+      action: 'SUBMITTED',
     };
   }
 }

@@ -28,12 +28,20 @@ test.describe('SPSE Non-Tender Automation', () => {
       await loginPage.login(
         userPPK.username,
         userPPK.password,
-        spseBaseUrl
+        spseBaseUrl,
+        { organization: nonTenderData.selection.satkerQuery }
       );
     });
 
     await test.step('PPK membuka form pembuatan paket Non-Tender', async () => {
-      await nonTenderPage.navigateToBuatPaket();
+      await nonTenderPage.navigateToBuatPaket(
+        userPPK.username,
+        userPPK.password,
+        {
+          baseUrl: spseBaseUrl,
+          organization: nonTenderData.selection.satkerQuery,
+        }
+      );
       await nonTenderPage.selectSatkerAndMetode(nonTenderData.selection);
       selectedRup = await nonTenderPage.selectRencanaAndCreatePaket({
         rupName: nonTenderData.selection.rupName,
@@ -89,6 +97,12 @@ test.describe('SPSE Non-Tender Automation', () => {
         satker: nonTenderData.selection.satkerQuery,
         rupName: selectedRup.nama,
         rupMethod: selectedRup.metodeLabel,
+        rupPagu: selectedRup.pagu,
+        hps: nonTenderData.package.kbkiItems.reduce(
+          (total, item) => total + item.harga,
+          0
+        ),
+        requiresKbki: nonTenderData.package.requiresKbki,
         assignedRole: submission.assignedRole,
         status: submission.status,
         createdAt: new Date().toISOString()

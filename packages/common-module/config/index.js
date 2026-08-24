@@ -17,16 +17,10 @@ const readJsonIfExists = (fileName, fallback = {}) => {
   return JSON.parse(content);
 };
 
-let mobileEnv, env, db;
+let env;
 if (process.env.ENV === 'UAT') {
-  mobileEnv = readJsonIfExists('mobile.env.uat.json', {});
   env = readJsonIfExists('env.uat.json', {});
-  db = readJsonIfExists('db.uat.json', {});
 } else {
-  mobileEnv = readJsonIfExists('mobile.env.sit.json', {});
   env = readJsonIfExists('env.sit.json', {});
-  db = readJsonIfExists('db.sit.json', {});
 }
-export {
-  mobileEnv, env, db
-};
+export { env };

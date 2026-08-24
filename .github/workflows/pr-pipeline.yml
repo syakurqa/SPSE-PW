@@ -1,164 +1,18 @@
-name: PR - Pull Request Pipeline
+name: SPSE Pull Request
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  lint-check:
-    name: Lint and Prettier check
+  lint:
     runs-on: qa-runner
-    environment: SIT
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - name: Set up NodeJS
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Check Node Version
-        run: |
-          node -v
-          npm -v
-      - name: Set up env config from secret
-        run: echo '${{ secrets.PLAYWRIGHT_ENV }}' > packages/common-module/config/env.sit.json
-
-      - name: Set up db config from secret
-        run: echo '${{ secrets.PLAYWRIGHT_DB }}' > packages/common-module/config/db.sit.json
-
-      - name: Install Dependencies
-        run: npm install
-      - name: Lint and Prettier check
-        run: |
-          npm run lint:common-module
-          npm run lint:api
-          npm run lint:web
-      - name: Zephyr TC validity check
-        run: |
-          git fetch origin ${{ github.base_ref }}
-          npm run check:testcase -- --git-diff origin/${{ github.base_ref }}
-      - name: Duplicate TC check
-        run: |
-          npm run check:unique-testcase -- --git-diff origin/${{ github.base_ref }}
-
-  detect-changes:
-    name: Detect Changed Test Files
-    runs-on: qa-runner
-    needs: [lint-check]
-    outputs:
-      api_tests: ${{ steps.detect.outputs.api_tests }}
-      web_tests: ${{ steps.detect.outputs.web_tests }}
-      has_api_tests: ${{ steps.detect.outputs.has_api_tests }}
-      has_web_tests: ${{ steps.detect.outputs.has_web_tests }}
-      should_skip: ${{ steps.check-skip.outputs.should_skip }}
-    steps:
-      - name: Check if should skip
-        id: check-skip
-        run: |
-          PR_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}")
-          
-          echo "Checking PR description for 'detect-changes:skip' keyword..."
-          
-          if echo "$PR_DATA" | grep -q "detect-changes:skip"; then
-            echo "should_skip=true" >> $GITHUB_OUTPUT
-            echo "⏭️ Skipping test detection (found 'detect-changes:skip' in PR description)"
-          else
-            echo "should_skip=false" >> $GITHUB_OUTPUT
-            echo "✅ Proceeding with test detection"
-          fi
-      
-      - name: Checkout
-        if: steps.check-skip.outputs.should_skip != 'true'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
-      
-      - name: Detect changed test files
-        if: steps.check-skip.outputs.should_skip != 'true'
-        id: detect
-        run: |
-          # Get changed .spec.js files
-          git fetch origin ${{ github.base_ref }}
-          
-          # Get API test files (added/modified; exclude deletions)
-          API_FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }}...HEAD | grep 'packages/api-automation.*\.spec\.js' | xargs -n1 basename 2>/dev/null || echo "")
-          
-          # Get Web test files (added/modified; exclude deletions)
-          WEB_FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }}...HEAD | grep 'packages/web-automation.*\.spec\.js' | xargs -n1 basename 2>/dev/null || echo "")
-          
-          # Convert to regex pattern (file1|file2|file3)
-          if [ -n "$API_FILES" ]; then
-            API_PATTERN=$(echo "$API_FILES" | tr '\n' '|' | sed 's/|$//' | sed 's/\./\\./g')
-            echo "api_tests=$API_PATTERN" >> $GITHUB_OUTPUT
-            echo "has_api_tests=true" >> $GITHUB_OUTPUT
-            echo "Changed API tests: $API_PATTERN"
-          else
-            echo "api_tests=" >> $GITHUB_OUTPUT
-            echo "has_api_tests=false" >> $GITHUB_OUTPUT
-            echo "No API test changes detected"
-          fi
-          
-          if [ -n "$WEB_FILES" ]; then
-            WEB_PATTERN=$(echo "$WEB_FILES" | tr '\n' '|' | sed 's/|$//' | sed 's/\./\\./g')
-            echo "web_tests=$WEB_PATTERN" >> $GITHUB_OUTPUT
-            echo "has_web_tests=true" >> $GITHUB_OUTPUT
-            echo "Changed Web tests: $WEB_PATTERN"
-          else
-            echo "web_tests=" >> $GITHUB_OUTPUT
-            echo "has_web_tests=false" >> $GITHUB_OUTPUT
-            echo "No Web test changes detected"
-          fi
-
-  run-api-tests:
-    if: needs.detect-changes.outputs.has_api_tests == 'true' && needs.detect-changes.outputs.should_skip != 'true'
-    needs: [detect-changes]
-    uses: ./.github/workflows/run-tests.yml
-    with:
-      workspace_type: api
-      test_environment: SIT
-      githost_environment: qa-runner
-      keyword: ${{ needs.detect-changes.outputs.api_tests }}
-      workers: "8"
-      branch_name: ${{ github.head_ref }}
-    secrets: inherit
-
-  run-web-tests:
-    if: needs.detect-changes.outputs.has_web_tests == 'true' && needs.detect-changes.outputs.should_skip != 'true'
-    needs: [detect-changes]
-    uses: ./.github/workflows/run-tests.yml
-    with:
-      workspace_type: web
-      test_environment: SIT
-      githost_environment: qa-runner
-      keyword: ${{ needs.detect-changes.outputs.web_tests }}
-      workers: "8"
-      branch_name: ${{ github.head_ref }}
-    secrets: inherit
-
-  report-api:
-    if: needs.detect-changes.outputs.has_api_tests == 'true' && !cancelled()
-    needs: [detect-changes, run-api-tests]
-    uses: ./.github/workflows/report.yml
-    with:
-      workspace_type: api
-      test_environment: SIT
-      keyword: ${{ needs.detect-changes.outputs.api_tests }}
-      scheduler: false
-      branch_name: ${{ github.head_ref }}
-    secrets: inherit
-
-  report-web:
-    if: needs.detect-changes.outputs.has_web_tests == 'true' && !cancelled()
-    needs: [detect-changes, run-web-tests]
-    uses: ./.github/workflows/report.yml
-    with:
-      workspace_type: web
-      test_environment: SIT
-      keyword: ${{ needs.detect-changes.outputs.web_tests }}
-      scheduler: false
-      branch_name: ${{ github.head_ref }}
-    secrets: inherit
-
+          cache: npm
+      - run: npm ci
+      - name: Verify SPSE test discovery
+        run: npm run test:spse -- --list

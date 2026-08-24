@@ -2,20 +2,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@api/*": [
-        "packages/api-automation/*"
-      ],
       "@common/*": [
         "packages/common-module/*"
       ],
-      "@fixtures/*": [
-        "packages/common-module/fixtures/*"
-      ],
       "@web/*": [
         "packages/web-automation/*"
-      ],
-      "@mobile/*": [
-        "packages/mobile-automation/*"
       ]
     }
   }

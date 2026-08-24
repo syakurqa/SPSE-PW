@@ -13,6 +13,8 @@ CLAUDE.md
 .DS_Store
 .env
 .qa-last-run.json
+.counter.json
+.tender-counter.json
 .agents/
 # Cloned MCP servers for AI agent setup
 .github/agents/mcp-servers/
